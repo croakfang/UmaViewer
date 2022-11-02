@@ -59,16 +59,16 @@ public class UmaViewerBuilder : MonoBehaviour
             CurrentUMAContainer.CharaData = JObject.Parse(txt);
             if (mini)
             {
-                LoadMiniUma(id, costumeId);
+                StartCoroutine(LoadMiniUma(id, costumeId));
             }
             else
             {
-                LoadNormalUma(id, costumeId);
+                StartCoroutine(LoadNormalUma(id, costumeId));
             }
         });
     }
 
-    private void LoadNormalUma(int id, string costumeId)
+    private IEnumerator LoadNormalUma(int id, string costumeId)
     {
         JObject charaData = CurrentUMAContainer.CharaData;
         bool genericCostume = CurrentUMAContainer.IsGeneric = costumeId.Length >= 4;
@@ -104,17 +104,16 @@ public class UmaViewerBuilder : MonoBehaviour
             body = UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/pfb_bdy{costumeId}_{height}_{shape}_{bust}";
 
             Debug.Log("Looking for " + body);
-            asset = UmaViewerMain.Instance.AbList.FirstOrDefault(a => a.Name == body);
+            asset = UmaViewerMain.Instance.AbChara.FirstOrDefault(a => a.Name == body);
         }
-        else asset = UmaViewerMain.Instance.AbList.FirstOrDefault(a => a.Name == UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/pfb_bdy{id}_{costumeId}");
+        else asset = UmaViewerMain.Instance.AbChara.FirstOrDefault(a => a.Name == UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/pfb_bdy{id}_{costumeId}");
 
         if (asset == null)
         {
             Debug.LogError("No body, can't load!");
-            return;
+            yield break;
         }
-
-        else if (genericCostume)
+        if (genericCostume)
         {
             string texPattern1 = "", texPattern2 = "", texPattern3 = "", texPattern4 = "", texPattern5 = "";
             switch (costumeId.Split('_')[0])
@@ -141,7 +140,7 @@ public class UmaViewerBuilder : MonoBehaviour
             }
             Debug.Log(texPattern1 + " " + texPattern2);
             //Load Body Textures
-            foreach (var asset1 in UmaViewerMain.Instance.AbList.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath)
+            foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath)
                 && (a.Name.Contains(texPattern1)
                 || a.Name.Contains(texPattern2)
                 || (string.IsNullOrEmpty(texPattern3) ? false : a.Name.Contains(texPattern3))
@@ -154,7 +153,7 @@ public class UmaViewerBuilder : MonoBehaviour
             RecursiveLoadAsset(asset);
 
             //Load Physics
-            foreach (var asset1 in UmaViewerMain.Instance.AbList.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/clothes")))
+            foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/clothes")))
             {
                 if (asset1.Name.Contains("cloth00") && asset1.Name.Contains("bust" + bust))
                     RecursiveLoadAsset(asset1);
@@ -171,7 +170,6 @@ public class UmaViewerBuilder : MonoBehaviour
                     RecursiveLoadAsset(asset1);
             }
         }
-
 
         // Record Head Data
         int head_id;
@@ -201,19 +199,19 @@ public class UmaViewerBuilder : MonoBehaviour
         }
 
         string head = UmaDatabaseController.HeadPath + $"chr{head_id}_{head_costumeId}/pfb_chr{head_id}_{head_costumeId}";
-        asset = UmaViewerMain.Instance.AbList.FirstOrDefault(a => a.Name == head);
+        asset = UmaViewerMain.Instance.AbChara.FirstOrDefault(a => a.Name == head);
         bool isDefaultHead = false;
         //Some costumes don't have custom heads
         if (head_costumeId != "00" && asset == null)
         {
-            asset = UmaViewerMain.Instance.AbList.FirstOrDefault(a => a.Name == UmaDatabaseController.HeadPath + $"chr{head_id}_00/pfb_chr{head_id}_00");
+            asset = UmaViewerMain.Instance.AbChara.FirstOrDefault(a => a.Name == UmaDatabaseController.HeadPath + $"chr{head_id}_00/pfb_chr{head_id}_00");
             isDefaultHead = true;
         }
 
         if (asset != null)
         {
             //Load Hair Textures
-            foreach (var asset1 in UmaViewerMain.Instance.AbList.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_{head_costumeId}/textures")))
+            foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_{head_costumeId}/textures")))
             {
                 RecursiveLoadAsset(asset1);
             }
@@ -223,7 +221,7 @@ public class UmaViewerBuilder : MonoBehaviour
             //Load Physics
             if (isDefaultHead)
             {
-                foreach (var asset1 in UmaViewerMain.Instance.AbList.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_00/clothes")))
+                foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_00/clothes")))
                 {
                     if (asset1.Name.Contains("cloth00"))
                         RecursiveLoadAsset(asset1);
@@ -231,7 +229,7 @@ public class UmaViewerBuilder : MonoBehaviour
             }
             else
             {
-                foreach (var asset1 in UmaViewerMain.Instance.AbList.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_{head_costumeId}/clothes")))
+                foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_{head_costumeId}/clothes")))
                 {
                     if (asset1.Name.Contains("cloth00"))
                         RecursiveLoadAsset(asset1);
@@ -239,16 +237,15 @@ public class UmaViewerBuilder : MonoBehaviour
             }
         }
 
-
         if (tailId != 0)
         {
             string tailName = $"tail{tailId.ToString().PadLeft(4, '0')}_00";
             string tailPath = $"3d/chara/tail/{tailName}/";
             string tailPfb = tailPath + $"pfb_{tailName}";
-            asset = UmaViewerMain.Instance.AbList.FirstOrDefault(a => a.Name == tailPfb);
+            asset = UmaViewerMain.Instance.AbChara.FirstOrDefault(a => a.Name == tailPfb);
             if (asset != null)
             {
-                foreach (var asset1 in UmaViewerMain.Instance.AbList.Where(a => a.Name.StartsWith($"{tailPath}textures/tex_{tailName}_{head_id}") || a.Name.StartsWith($"{tailPath}textures/tex_{tailName}_0000")))
+                foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{tailPath}textures/tex_{tailName}_{head_id}") || a.Name.StartsWith($"{tailPath}textures/tex_{tailName}_0000")))
                 {
                     RecursiveLoadAsset(asset1);
                 }
@@ -256,7 +253,7 @@ public class UmaViewerBuilder : MonoBehaviour
 
 
                 //Load Physics
-                foreach (var asset1 in UmaViewerMain.Instance.AbList.Where(a => a.Name.StartsWith($"{tailPath}clothes")))
+                foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{tailPath}clothes")))
                 {
                     if (asset1.Name.Contains("cloth00"))
                         RecursiveLoadAsset(asset1);
@@ -267,6 +264,12 @@ public class UmaViewerBuilder : MonoBehaviour
                 Debug.Log("no tail");
             }
         }
+
+        do
+        {
+            yield return 0;
+        }
+        while (Main.AwaitingLoadBundles.Count > 0);
 
         //Load FacialMorph
         if (CurrentUMAContainer.Head)
@@ -287,10 +290,10 @@ public class UmaViewerBuilder : MonoBehaviour
 
         CurrentUMAContainer.MergeModel();
         CurrentUMAContainer.LoadPhysics();
-        LoadAsset(UmaViewerMain.Instance.AbMotions.FirstOrDefault(a => a.Name.EndsWith($"anm_eve_chr{id}_00_idle01_loop")));
+        RecursiveLoadAsset(UmaViewerMain.Instance.AbMotions.FirstOrDefault(a => a.Name.EndsWith($"anm_eve_chr{id}_00_idle01_loop")));
     }
 
-    private void LoadMiniUma(int id, string costumeId)
+    private IEnumerator LoadMiniUma(int id, string costumeId)
     {
         JObject charaData = CurrentUMAContainer.CharaData;
         CurrentUMAContainer.IsMini = true;
@@ -314,7 +317,7 @@ public class UmaViewerBuilder : MonoBehaviour
         if (asset == null)
         {
             Debug.LogError("No body, can't load!");
-            return;
+            yield break;
         }
         else if (isGeneric)
         {
@@ -578,8 +581,23 @@ public class UmaViewerBuilder : MonoBehaviour
         }
     }
 
-    private void RecursiveLoadAsset(UmaDatabaseEntry entry, bool IsSubAsset = false)
+    public void InterruptLoading()
     {
+        foreach(var keyValue in UmaViewerDownload.AwaitCoroutines.Union(UmaViewerDownload.DownloadCoroutines))
+        {
+            StopCoroutine(keyValue.Value);
+        }
+        UmaViewerDownload.AwaitCoroutines.Clear();
+        UmaViewerDownload.DownloadCoroutines.Clear();
+        Main.AwaitingLoadBundles.Clear();
+        Main.DownloadingBundles.Clear();
+    }
+
+    public void RecursiveLoadAsset(UmaDatabaseEntry entry, bool IsSubAsset = false)
+    {
+        if (Main.AwaitingLoadBundles.Contains(entry.Name) || Main.LoadedBundles.ContainsKey(entry.Name)) return;
+        Main.AwaitingLoadBundles.Add(entry.Name);
+
         if (!string.IsNullOrEmpty(entry.Prerequisites))
         {
             foreach (string prerequisite in entry.Prerequisites.Split(';'))
@@ -596,34 +614,10 @@ public class UmaViewerBuilder : MonoBehaviour
                     RecursiveLoadAsset(Main.AbList.FirstOrDefault(ab => ab.Name == prerequisite), true);
             }
         }
-        LoadAsset(entry, IsSubAsset);
+        UmaViewerDownload.DownOrLoadAsset(entry, IsSubAsset);
     }
 
-    public void LoadAsset(UmaDatabaseEntry entry, bool IsSubAsset = false)
-    {
-        Debug.Log("Loading " + entry.Name);
-        if (Main.LoadedBundles.ContainsKey(entry.Name)) return;
-
-        string filePath = UmaDatabaseController.GetABPath(entry);
-        if (File.Exists(filePath))
-        {
-            AssetBundle bundle = AssetBundle.LoadFromFile(filePath);
-            if (bundle == null)
-            {
-                Debug.Log(filePath + " exists and doesn't work");
-                return;
-            }
-            Main.LoadedBundles.Add(entry.Name, bundle);
-            UI.LoadedAssetsAdd(entry);
-            LoadBundle(bundle, IsSubAsset);
-        }
-        else
-        {
-            Debug.LogError($"{entry.Name} - {filePath} does not exist");
-        }
-    }
-
-    private void LoadBundle(AssetBundle bundle, bool IsSubAsset = false)
+    public void LoadBundle(AssetBundle bundle, bool IsSubAsset = false)
     {
         if (bundle.name == "shader.a")
         {
@@ -648,7 +642,7 @@ public class UmaViewerBuilder : MonoBehaviour
             object asset = bundle.LoadAsset(name);
 
             if (asset == null) { continue; }
-            Debug.Log("Bundle:" + bundle.name + "/" + name + $" ({asset.GetType()})");
+            //Debug.Log("Bundle:" + bundle.name + "/" + name + $" ({asset.GetType()})");
             switch (asset)
             {
                 case AnimationClip aClip:

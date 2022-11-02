@@ -9,6 +9,7 @@ using System.Text.RegularExpressions;
 using TMPro;
 using UnityEngine;
 using UnityEngine.UI;
+using Debug = UnityEngine.Debug;
 
 public class UmaViewerUI : MonoBehaviour
 {
@@ -31,6 +32,7 @@ public class UmaViewerUI : MonoBehaviour
     [Header("other")]
     public ScrollRect PropList;
     public ScrollRect SceneList;
+    public GameObject DownloadingLockScreen;
 
     public ScrollRect EmotionList;
     public ScrollRect FacialList;
@@ -95,6 +97,18 @@ public class UmaViewerUI : MonoBehaviour
 
     private void Update()
     {
+        if(Main.AwaitingLoadBundles.Count > 0 || Main.DownloadingBundles.Count > 0)
+        {
+            if(!DownloadingLockScreen.activeSelf)
+                DownloadingLockScreen.SetActive(true);
+            DownloadingLockScreen.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = $"Downloading, please wait...\nAwaiting dependencies: {Main.AwaitingLoadBundles.Count}\nDownloading: {Main.DownloadingBundles.Count}";
+        }
+        else
+        {
+            if (DownloadingLockScreen.activeSelf)
+                DownloadingLockScreen.SetActive(false);
+        }
+
         if (Builder.CurrentAudioSources.Count > 0)
         {
             AudioSource MianSource = Builder.CurrentAudioSources[0];
@@ -502,7 +516,7 @@ public class UmaViewerUI : MonoBehaviour
                 container.Name.text = container.name = Path.GetFileName(entry.Name);
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.LoadAsset(entryInstance);
+                    Builder.RecursiveLoadAsset(entryInstance);
                     LoadedAnimation();
                 });
             }
@@ -517,7 +531,7 @@ public class UmaViewerUI : MonoBehaviour
                 container.Name.text = container.name = Path.GetFileName(entry.Name);
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.LoadAsset(entryInstance);
+                    Builder.RecursiveLoadAsset(entryInstance);
                     LoadedAnimation();
                 });
             }
@@ -530,7 +544,7 @@ public class UmaViewerUI : MonoBehaviour
                 container.Name.text = container.name = Path.GetFileName(entry.Name);
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.LoadAsset(entryInstance);
+                    Builder.RecursiveLoadAsset(entryInstance);
                     LoadedAnimation();
                 });
             }
