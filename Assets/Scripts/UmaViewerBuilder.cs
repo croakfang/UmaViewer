@@ -60,17 +60,17 @@ public class UmaViewerBuilder : MonoBehaviour
         CurrentUMAContainer.CharaData = UmaDatabaseController.ReadCharaData(id);
         if (mini)
         {
-            LoadMiniUma(id, costumeId);
+            StartCoroutine(LoadMiniUma(id, costumeId));
         }
         else
         {
-            LoadNormalUma(id, costumeId);
+            StartCoroutine(LoadNormalUma(id, costumeId));
         }
 
         yield break;
     }
 
-    private void LoadNormalUma(int id, string costumeId)
+    private IEnumerator LoadNormalUma(int id, string costumeId)
     {
         DataRow charaData = CurrentUMAContainer.CharaData;
         bool genericCostume = CurrentUMAContainer.IsGeneric = costumeId.Length >= 4;
@@ -113,10 +113,9 @@ public class UmaViewerBuilder : MonoBehaviour
         if (asset == null)
         {
             Debug.LogError("No body, can't load!");
-            return;
+            yield break;
         }
-
-        else if (genericCostume)
+        if (genericCostume)
         {
             string texPattern1 = "", texPattern2 = "", texPattern3 = "", texPattern4 = "", texPattern5 = "";
             switch (costumeId.Split('_')[0])
@@ -173,7 +172,6 @@ public class UmaViewerBuilder : MonoBehaviour
                     RecursiveLoadAsset(asset1);
             }
         }
-
 
         // Record Head Data
         int head_id;
@@ -269,6 +267,12 @@ public class UmaViewerBuilder : MonoBehaviour
             }
         }
 
+        do
+        {
+            yield return 0;
+        }
+        while (Main.AwaitingLoadBundles.Count > 0);
+
         CurrentUMAContainer.LoadPhysics(); //Need to load physics before loading FacialMorph
 
         //Load FacialMorph
@@ -347,10 +351,10 @@ public class UmaViewerBuilder : MonoBehaviour
         CurrentUMAContainer.Initialize();
 
         CurrentUMAContainer.SetHeight(Convert.ToInt32(CurrentUMAContainer.CharaData["scale"]));
-        LoadAsset(UmaViewerMain.Instance.AbMotions.FirstOrDefault(a => a.Name.EndsWith($"anm_eve_chr{id}_00_idle01_loop")));
+        RecursiveLoadAsset(UmaViewerMain.Instance.AbMotions.FirstOrDefault(a => a.Name.EndsWith($"anm_eve_chr{id}_00_idle01_loop")));
     }
 
-    private void LoadMiniUma(int id, string costumeId)
+    private IEnumerator LoadMiniUma(int id, string costumeId)
     {
         DataRow charaData = CurrentUMAContainer.CharaData;
         CurrentUMAContainer.IsMini = true;
@@ -374,7 +378,7 @@ public class UmaViewerBuilder : MonoBehaviour
         if (asset == null)
         {
             Debug.LogError("No body, can't load!");
-            return;
+            yield break;
         }
         else if (isGeneric)
         {
@@ -638,8 +642,23 @@ public class UmaViewerBuilder : MonoBehaviour
         }
     }
 
+    public void InterruptLoading()
+    {
+        foreach(var keyValue in UmaViewerDownload.AwaitCoroutines.Union(UmaViewerDownload.DownloadCoroutines))
+        {
+            StopCoroutine(keyValue.Value);
+        }
+        UmaViewerDownload.AwaitCoroutines.Clear();
+        UmaViewerDownload.DownloadCoroutines.Clear();
+        Main.AwaitingLoadBundles.Clear();
+        Main.DownloadingBundles.Clear();
+    }
+
     public void RecursiveLoadAsset(UmaDatabaseEntry entry, bool IsSubAsset = false)
     {
+        if (Main.AwaitingLoadBundles.Contains(entry.Name) || Main.LoadedBundles.ContainsKey(entry.Name)) return;
+        Main.AwaitingLoadBundles.Add(entry.Name);
+
         if (!string.IsNullOrEmpty(entry.Prerequisites))
         {
             foreach (string prerequisite in entry.Prerequisites.Split(';'))
@@ -656,34 +675,10 @@ public class UmaViewerBuilder : MonoBehaviour
                     RecursiveLoadAsset(Main.AbList.FirstOrDefault(ab => ab.Name == prerequisite), true);
             }
         }
-        LoadAsset(entry, IsSubAsset);
+        UmaViewerDownload.DownOrLoadAsset(entry, IsSubAsset);
     }
 
-    public void LoadAsset(UmaDatabaseEntry entry, bool IsSubAsset = false)
-    {
-        Debug.Log("Loading " + entry.Name);
-        if (Main.LoadedBundles.ContainsKey(entry.Name)) return;
-
-        string filePath = UmaDatabaseController.GetABPath(entry);
-        if (File.Exists(filePath))
-        {
-            AssetBundle bundle = AssetBundle.LoadFromFile(filePath);
-            if (bundle == null)
-            {
-                Debug.Log(filePath + " exists and doesn't work");
-                return;
-            }
-            Main.LoadedBundles.Add(entry.Name, bundle);
-            UI.LoadedAssetsAdd(entry);
-            LoadBundle(bundle, IsSubAsset);
-        }
-        else
-        {
-            Debug.LogError($"{entry.Name} - {filePath} does not exist");
-        }
-    }
-
-    private void LoadBundle(AssetBundle bundle, bool IsSubAsset = false)
+    public void LoadBundle(AssetBundle bundle, bool IsSubAsset = false)
     {
         if (bundle.name == "shader.a")
         {
@@ -710,7 +705,7 @@ public class UmaViewerBuilder : MonoBehaviour
             object asset = bundle.LoadAsset(name);
 
             if (asset == null) { continue; }
-            Debug.Log("Bundle:" + bundle.name + "/" + name + $" ({asset.GetType()})");
+            //Debug.Log("Bundle:" + bundle.name + "/" + name + $" ({asset.GetType()})");
             switch (asset)
             {
                 case AnimationClip aClip:

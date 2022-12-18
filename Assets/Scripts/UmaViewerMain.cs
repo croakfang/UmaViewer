@@ -24,6 +24,8 @@ public class UmaViewerMain : MonoBehaviour
     [Header("Asset Memory")]
     public bool ShadersLoaded = false;
     public Dictionary<string, AssetBundle> LoadedBundles = new Dictionary<string, AssetBundle>();
+    public List<string> DownloadingBundles = new List<string>();
+    public List<string> AwaitingLoadBundles = new List<string>();
 
     private void Awake()
     {
@@ -73,35 +75,76 @@ public class UmaViewerMain : MonoBehaviour
         UI.LoadPropPanel();
         UI.LoadMapPanel();
 
-
-        var asset = AbList.FirstOrDefault(a => a.Name.Equals("livesettings"));
-        if (asset != null)
+        var livesettings = AbList.FirstOrDefault(a => a.Name.Equals("livesettings"));
+        if (File.Exists(UmaDatabaseController.GetABPath(livesettings)))
         {
-            string filePath = UmaDatabaseController.GetABPath(asset);
-            if (File.Exists(filePath))
+            StartCoroutine(UmaViewerDownload.DownloadText("https://www.tracenacademy.com/api/BasicLiveDataInfo", txt =>
             {
-                AssetBundle bundle = AssetBundle.LoadFromFile(filePath);
-                foreach (var item in UmaDatabaseController.Instance.LiveData)
+                UmaLiveData = JArray.Parse(txt);
+                var asset = AbList.FirstOrDefault(a => a.Name.Equals("livesettings"));
+                if (asset != null)
                 {
-                    var musicId = Convert.ToInt32(item["music_id"]);
-                    var songName = item["songname"].ToString();
-                    if (!Lives.Where(c => c.MusicId == musicId).Any())
+                    string filePath = UmaDatabaseController.GetABPath(asset);
+                    if (File.Exists(filePath))
                     {
-                        if (bundle.Contains(musicId.ToString()))
+                        AssetBundle bundle = AssetBundle.LoadFromFile(filePath);
+                        foreach (var item in UmaLiveData)
                         {
-                            TextAsset liveData = bundle.LoadAsset<TextAsset>(musicId.ToString());
-
-                            Lives.Add(new LiveEntry(liveData.text)
+                            if (!Lives.Where(c => c.MusicId == (int)item["musicId"]).Any())
                             {
-                                MusicId = musicId,
-                                SongName = songName
-                            });
+                                if (bundle.Contains((string)item["musicId"]))
+                                {
+                                    TextAsset liveData = bundle.LoadAsset<TextAsset>((string)item["musicId"]);
+
+                                    Lives.Add(new LiveEntry(liveData.text)
+                                    {
+                                        MusicId = (int)item["musicId"],
+                                        songName = (string)item["songName"]
+                                    });
+                                }
+                            }
                         }
+                        UI.LoadLivePanels();
                     }
                 }
-                UI.LoadLivePanels();
-            }
+            }));
         }
+        else
+        yield return UmaViewerDownload.DownloadAsset(livesettings, (value) => {
+            if (value)
+            {
+                StartCoroutine(UmaViewerDownload.DownloadText("https://www.tracenacademy.com/api/BasicLiveDataInfo", txt =>
+                {
+                    UmaLiveData = JArray.Parse(txt);
+                    var asset = AbList.FirstOrDefault(a => a.Name.Equals("livesettings"));
+                    if (asset != null)
+                    {
+                        string filePath = UmaDatabaseController.GetABPath(asset);
+                        if (File.Exists(filePath))
+                        {
+                            AssetBundle bundle = AssetBundle.LoadFromFile(filePath);
+                            foreach (var item in UmaLiveData)
+                            {
+                                if (!Lives.Where(c => c.MusicId == (int)item["musicId"]).Any())
+                                {
+                                    if (bundle.Contains((string)item["musicId"]))
+                                    {
+                                        TextAsset liveData = bundle.LoadAsset<TextAsset>((string)item["musicId"]);
+
+                                        Lives.Add(new LiveEntry(liveData.text)
+                                        {
+                                            MusicId = (int)item["musicId"],
+                                            songName = (string)item["songName"]
+                                        });
+                                    }
+                                }
+                            }
+                            UI.LoadLivePanels();
+                        }
+                    }
+                }));
+            }
+        });
     }
 
     public void OpenUrl(string url)
