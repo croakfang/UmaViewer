@@ -80,7 +80,7 @@ public class UmaViewerMain : MonoBehaviour
         {
             StartCoroutine(UmaViewerDownload.DownloadText("https://www.tracenacademy.com/api/BasicLiveDataInfo", txt =>
             {
-                UmaLiveData = JArray.Parse(txt);
+                var UmaLiveData = JArray.Parse(txt);
                 var asset = AbList.FirstOrDefault(a => a.Name.Equals("livesettings"));
                 if (asset != null)
                 {
@@ -99,7 +99,7 @@ public class UmaViewerMain : MonoBehaviour
                                     Lives.Add(new LiveEntry(liveData.text)
                                     {
                                         MusicId = (int)item["musicId"],
-                                        songName = (string)item["songName"]
+                                        SongName = (string)item["songName"]
                                     });
                                 }
                             }
@@ -115,7 +115,7 @@ public class UmaViewerMain : MonoBehaviour
             {
                 StartCoroutine(UmaViewerDownload.DownloadText("https://www.tracenacademy.com/api/BasicLiveDataInfo", txt =>
                 {
-                    UmaLiveData = JArray.Parse(txt);
+                    var UmaLiveData = JArray.Parse(txt);
                     var asset = AbList.FirstOrDefault(a => a.Name.Equals("livesettings"));
                     if (asset != null)
                     {
@@ -134,7 +134,7 @@ public class UmaViewerMain : MonoBehaviour
                                         Lives.Add(new LiveEntry(liveData.text)
                                         {
                                             MusicId = (int)item["musicId"],
-                                            songName = (string)item["songName"]
+                                            SongName = (string)item["songName"]
                                         });
                                     }
                                 }

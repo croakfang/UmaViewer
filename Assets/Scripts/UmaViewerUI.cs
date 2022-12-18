@@ -601,7 +601,7 @@ public class UmaViewerUI : MonoBehaviour
                 container.FontSize = 19;
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.LoadAsset(entryInstance);
+                    Builder.RecursiveLoadAsset(entryInstance);
                     LoadedAnimation();
                 });
             }

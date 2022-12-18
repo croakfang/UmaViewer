@@ -279,8 +279,12 @@ public class UmaViewerBuilder : MonoBehaviour
         if (CurrentUMAContainer.Head)
         {
             var locatorEntry = Main.AbList.FirstOrDefault(a => a.Name.EndsWith("3d/animator/drivenkeylocator"));
-            var bundle = AssetBundle.LoadFromFile(UmaDatabaseController.GetABPath(locatorEntry));
-            Main.LoadedBundles.Add(locatorEntry.Name, bundle);
+            var filePath = UmaDatabaseController.GetABPath(locatorEntry);
+            AssetBundle bundle = null;
+            yield return UmaViewerDownload.DownOrLoadAssetAsync(locatorEntry, (bndl) =>
+            {
+                bundle = bndl;
+            }, true);
             var locator = Instantiate(bundle.LoadAsset("DrivenKeyLocator"), CurrentUMAContainer.transform) as GameObject;
             locator.name = "DrivenKeyLocator";
 
@@ -290,10 +294,13 @@ public class UmaViewerBuilder : MonoBehaviour
 
             var mangaEntry = Main.AbEffect.FindAll(a => a.Name.StartsWith("3d/effect/charaemotion/pfb_eff_chr_emo_eye"));
             var mangaObjects = new List<GameObject>();
-            mangaEntry.ForEach(entry =>
+            foreach(var entry in mangaEntry)
             {
-                AssetBundle ab = AssetBundle.LoadFromFile(UmaDatabaseController.GetABPath(entry));
-                Main.LoadedBundles.Add(entry.Name, ab);
+                AssetBundle ab = null;
+                yield return UmaViewerDownload.DownOrLoadAssetAsync(entry, (bndl) =>
+                {
+                    ab = bndl;
+                }, true);
                 var obj = ab.LoadAsset(Path.GetFileNameWithoutExtension(entry.Name)) as GameObject;
                 obj.SetActive(false);
 
@@ -309,7 +316,7 @@ public class UmaViewerBuilder : MonoBehaviour
                 }
                 new List<Renderer>(RightObj.GetComponentsInChildren<Renderer>()).ForEach(a => { a.material.renderQueue = -1; });
                 CurrentUMAContainer.RightMangaObject.Add(RightObj);
-            });
+            }
 
             var tearEntry = Main.AbChara.FindAll(a => a.Name.StartsWith("3d/chara/common/tear/") && a.Name.Contains("pfb_chr_tear"));
             if (tearEntry.Count > 0)

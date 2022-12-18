@@ -39,6 +39,16 @@ public class UmaViewerDownload : MonoBehaviour
 
     }
 
+    public static IEnumerator DownOrLoadAssetAsync(UmaDatabaseEntry entry, System.Action<AssetBundle> callback, bool isSubAsset = false)
+    {
+        DownOrLoadAsset(entry, isSubAsset);
+        while (!Main.LoadedBundles.ContainsKey(entry.Name))
+        {
+            yield return 0;
+        }
+        callback(Main.LoadedBundles[entry.Name]);
+    }
+
     public static void DownOrLoadAsset(UmaDatabaseEntry entry, bool IsSubAsset = false)
     {
         if (Main.LoadedBundles.ContainsKey(entry.Name)
@@ -54,7 +64,6 @@ public class UmaViewerDownload : MonoBehaviour
                     AwaitCoroutines.Remove(entry.Name);
                     DownOrLoadAsset(value, IsSubAsset);
                 })));
-                Debug.Log(entry.Url + " failed check");
                 return;
             }
         }
