@@ -104,11 +104,11 @@ public class UmaViewerUI : MonoBehaviour
 
     private void Update()
     {
-        if(Main.AwaitingLoadBundles.Count > 0 || Main.DownloadingBundles.Count > 0)
+        if(Builder.LoadingInProgress)
         {
             if(!DownloadingLockScreen.activeSelf)
                 DownloadingLockScreen.SetActive(true);
-            DownloadingLockScreen.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = $"Downloading, please wait...\nAwaiting dependencies: {Main.AwaitingLoadBundles.Count}\nDownloading: {Main.DownloadingBundles.Count}";
+            DownloadingLockScreen.GetComponentInChildren<TMPro.TextMeshProUGUI>().text = $"Downloading, please wait...\nLoaded: {Main.Downloaded}/{Main.DownloadingBundles.Count}";
         }
         else
         {
@@ -167,14 +167,16 @@ public class UmaViewerUI : MonoBehaviour
         LoadedAssetsPanel.sizeDelta = new Vector2(0, LoadedAssetCount * 35);
     }
 
-    public void LoadedAssetsClear()
+    public void LoadedAssetsRemove(UmaDatabaseEntry entry)
     {
-        LoadedAssetCount = 0;
-        foreach (UmaUIContainer ui in LoadedAssetsPanel.GetComponentsInChildren<UmaUIContainer>())
+        var name = Path.GetFileName(entry.Name) + "\n" + entry.Url;
+        var container = LoadedAssetsPanel?.GetComponentsInChildren<UmaUIContainer>().FirstOrDefault(p => p.Name == name);
+        if(container != null)
         {
-            Destroy(ui.gameObject);
+            Destroy(container.gameObject);
+            LoadedAssetCount--;
+            LoadedAssetsPanel.sizeDelta = new Vector2(0, LoadedAssetCount * 35);
         }
-        LoadedAssetsPanel.sizeDelta = Vector2.zero;
     }
 
     public void LoadModelPanels()
@@ -354,7 +356,7 @@ public class UmaViewerUI : MonoBehaviour
             var imageInstance1 = container.GetComponent<Image>();
             container.Button.onClick.AddListener(() => {
                 HighlightChildImage(LiveList.content, imageInstance1);
-                Builder.LoadLive(live);
+                StartCoroutine(Builder.LoadLive(live));
             });
 
             var CharaContainer = Instantiate(UmaContainerPrefab, LiveSoundList.content).GetComponent<UmaUIContainer>();
@@ -420,7 +422,7 @@ public class UmaViewerUI : MonoBehaviour
             var imageInstance1 = container.GetComponent<Image>();
             container.Button.onClick.AddListener(() => {
                 HighlightChildImage(PropList.content, imageInstance1);
-                Builder.LoadProp(propInstance);
+                StartCoroutine(Builder.LoadProp(propInstance));
             });
         }
     }
@@ -436,7 +438,7 @@ public class UmaViewerUI : MonoBehaviour
             var imageInstance1 = container.GetComponent<Image>();
             container.Button.onClick.AddListener(() => {
                 HighlightChildImage(SceneList.content, imageInstance1);
-                Builder.LoadProp(sceneInstance);
+                StartCoroutine(Builder.LoadProp(sceneInstance));
             });
         }
     }
@@ -601,8 +603,11 @@ public class UmaViewerUI : MonoBehaviour
                 container.FontSize = 19;
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.RecursiveLoadAsset(entryInstance);
-                    LoadedAnimation();
+                    StartCoroutine(entryInstance.LoadAssetBundle(Builder.CurrentUMAContainer.gameObject, bundle =>
+                    {
+                        StartCoroutine(Builder.LoadAnimation(bundle));
+                        LoadedAnimation();
+                    }));
                 });
             }
         }
@@ -616,8 +621,11 @@ public class UmaViewerUI : MonoBehaviour
                 container.FontSize = 19;
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.RecursiveLoadAsset(entryInstance);
-                    LoadedAnimation();
+                    StartCoroutine(entryInstance.LoadAssetBundle(Builder.CurrentUMAContainer.gameObject, bundle =>
+                    {
+                        StartCoroutine(Builder.LoadAnimation(bundle));
+                        LoadedAnimation();
+                    }));
                 });
             }
         }
@@ -632,8 +640,12 @@ public class UmaViewerUI : MonoBehaviour
                 container.FontSize = 19;
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.RecursiveLoadAsset(entryInstance);
-                    LoadedAnimation();
+                    HighlightChildImage(animationList.content, container.GetComponent<Image>());
+                    StartCoroutine(entryInstance.LoadAssetBundle(Builder.CurrentUMAContainer.gameObject, bundle =>
+                    {
+                        StartCoroutine(Builder.LoadAnimation(bundle));
+                        LoadedAnimation();
+                    }));
                 });
             }
 
@@ -646,8 +658,11 @@ public class UmaViewerUI : MonoBehaviour
                 container.FontSize = 19;
                 container.Button.onClick.AddListener(() => {
                     HighlightChildImage(animationList.content, container.GetComponent<Image>());
-                    Builder.RecursiveLoadAsset(entryInstance);
-                    LoadedAnimation();
+                    StartCoroutine(entryInstance.LoadAssetBundle(Builder.CurrentUMAContainer.gameObject, bundle =>
+                    {
+                        StartCoroutine(Builder.LoadAnimation(bundle));
+                        LoadedAnimation();
+                    }));
                 });
             }
         }

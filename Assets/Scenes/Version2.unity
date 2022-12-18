@@ -30156,8 +30156,8 @@ MonoBehaviour:
   Characters: []
   Lives: []
   ShadersLoaded: 0
+  Downloaded: 0
   DownloadingBundles: []
-  AwaitingLoadBundles: []
 --- !u!4 &1564959566
 Transform:
   m_ObjectHideFlags: 0
@@ -30267,6 +30267,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 802a07dab5fa2e04fac9910977b8afb6, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  LoadingInProgress: 0
   Loaded: []
   ShaderList: []
   TransMaterialCharas: {fileID: 2100000, guid: 822a9b0732637f04b88e39818d097a19, type: 2}
@@ -36375,6 +36376,11 @@ PrefabInstance:
         type: 3}
       propertyPath: m_Name
       value: DownloadingLockPanel
+      objectReference: {fileID: 0}
+    - target: {fileID: 3338596584468682793, guid: 16dfa38a0648cfe4fb96abb59660924f,
+        type: 3}
+      propertyPath: m_IsActive
+      value: 0
       objectReference: {fileID: 0}
     m_RemovedComponents: []
   m_SourcePrefab: {fileID: 100100000, guid: 16dfa38a0648cfe4fb96abb59660924f, type: 3}

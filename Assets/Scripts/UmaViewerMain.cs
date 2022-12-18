@@ -23,9 +23,9 @@ public class UmaViewerMain : MonoBehaviour
 
     [Header("Asset Memory")]
     public bool ShadersLoaded = false;
-    public Dictionary<string, AssetBundle> LoadedBundles = new Dictionary<string, AssetBundle>();
+    public List <UmaDatabaseEntry> LoadedBundles = new List<UmaDatabaseEntry>();
+    public int Downloaded = 0;
     public List<string> DownloadingBundles = new List<string>();
-    public List<string> AwaitingLoadBundles = new List<string>();
 
     private void Awake()
     {
@@ -110,7 +110,7 @@ public class UmaViewerMain : MonoBehaviour
             }));
         }
         else
-        yield return UmaViewerDownload.DownloadAsset(livesettings, (value) => {
+        yield return livesettings.LoadAssetBundle(Instance.gameObject, (value) => {
             if (value)
             {
                 StartCoroutine(UmaViewerDownload.DownloadText("https://www.tracenacademy.com/api/BasicLiveDataInfo", txt =>
@@ -145,6 +145,14 @@ public class UmaViewerMain : MonoBehaviour
                 }));
             }
         });
+    }
+
+    public void UnloadByDependency(GameObject go)
+    {
+        foreach(var bundle in LoadedBundles)
+        {
+            bundle.UnloadAssetBundle(go);
+        }
     }
 
     public void OpenUrl(string url)

@@ -12,9 +12,6 @@ public class UmaViewerDownload : MonoBehaviour
     private static UmaViewerBuilder Builder => UmaViewerBuilder.Instance;
     private static UmaViewerUI UI => UmaViewerUI.Instance;
 
-    public static Dictionary<string, Coroutine> AwaitCoroutines = new Dictionary<string, Coroutine>();
-    public static Dictionary<string, Coroutine> DownloadCoroutines = new Dictionary<string, Coroutine>();
-
     public static IEnumerator DownloadText(string url, System.Action<string> callback)
     {
         if (PlayerPrefs.GetString(url, "")=="")
@@ -39,84 +36,54 @@ public class UmaViewerDownload : MonoBehaviour
 
     }
 
-    public static IEnumerator DownOrLoadAssetAsync(UmaDatabaseEntry entry, System.Action<AssetBundle> callback, bool isSubAsset = false)
+    public static IEnumerator DownOrLoadAsset(GameObject caller, UmaDatabaseEntry entry, System.Action<AssetBundle> callback = null)
     {
-        DownOrLoadAsset(entry, isSubAsset);
-        while (!Main.LoadedBundles.ContainsKey(entry.Name))
+        if (entry == null) yield break;
+        if (entry.Loaded)
         {
-            yield return 0;
+            if (!entry.ReferencedBy.Contains(caller))
+                entry.ReferencedBy.Add(caller);
+            callback?.Invoke(entry.AssetBundle);
+            yield break;
         }
-        callback(Main.LoadedBundles[entry.Name]);
-    }
 
-    public static void DownOrLoadAsset(UmaDatabaseEntry entry, bool IsSubAsset = false)
-    {
-        if (Main.LoadedBundles.ContainsKey(entry.Name)
-            || Main.DownloadingBundles.Contains(entry.Name)
-        ) return;
-
-        foreach (var req in entry.Prerequisites.Split(';'))                             //If any dependencies are not loaded, stop loading this and wait for them to finish downloading
+        var dependencies = entry.Prerequisites.Split(new char[] {';'}, System.StringSplitOptions.RemoveEmptyEntries).ToList();
+        Main.DownloadingBundles.AddRange(dependencies);
+        foreach(var dependency in dependencies)
         {
-            if (Main.DownloadingBundles.Contains(req))
-            {
-                AwaitCoroutines.Add(entry.Name, Main.StartCoroutine(AwaitDependencies(entry, (value) =>
-                {
-                    AwaitCoroutines.Remove(entry.Name);
-                    DownOrLoadAsset(value, IsSubAsset);
-                })));
-                return;
-            }
+            var dep = Main.AbList.FirstOrDefault(a => a.Name == dependency);
+            yield return dep.LoadAssetBundle(caller);
+            Main.Downloaded += 1;
         }
 
         string filePath = UmaDatabaseController.GetABPath(entry);
-        if (File.Exists(filePath))                                                      //Load file if it exists
+        if (!File.Exists(filePath))
         {
-            AssetBundle bundle = AssetBundle.LoadFromFile(filePath);
-            if (bundle == null)
+            bool result = false;
+            yield return DownloadAsset(entry, (value) =>
             {
-                Debug.Log(filePath + " exists and doesn't work");
-                return;
+                result = value;
+            });
+            if (!result)
+            { 
+                Debug.LogError($"{entry.Name} - {filePath} download failed");
+                callback.Invoke(null);
+                yield break;
             }
-            Main.LoadedBundles.Add(entry.Name, bundle);
-            Main.AwaitingLoadBundles.Remove(entry.Name);
-            UI.LoadedAssetsAdd(entry);
-            Builder.LoadBundle(bundle, IsSubAsset);
         }
 
-        else if(!Main.DownloadingBundles.Contains(entry.Name))                           //Download it if not
+        AssetBundle bundle = AssetBundle.LoadFromFile(filePath);
+        if (bundle == null)
         {
-            Main.DownloadingBundles.Add(entry.Name);
-            DownloadCoroutines.Add(entry.Name, UmaViewerMain.Instance.StartCoroutine(DownloadAsset(entry, (value) =>
-            {
-                DownloadCoroutines.Remove(entry.Name);
-                Main.DownloadingBundles.Remove(entry.Name);
-                if (value)
-                {
-                    DownOrLoadAsset(entry, IsSubAsset);
-                }
-                else
-                {
-                    Debug.LogError($"{entry.Name} - {filePath} download failed");
-                }
-            })));
+            Debug.LogError(filePath + " exists but doesn't work");
+            callback?.Invoke(null);
+            yield break;
         }
-    }
-
-    public static IEnumerator AwaitDependencies(UmaDatabaseEntry entry, System.Action<UmaDatabaseEntry> callback)
-    {
-        var dependencies = entry.Prerequisites.Split(';').ToList();
-        while(dependencies.Count > 0)
+        if (bundle.name == "shader.a")
         {
-            for(int i = dependencies.Count - 1; i >= 0; i--)
-            {
-                if (!Main.DownloadingBundles.Contains(dependencies[i]))
-                {
-                    dependencies.RemoveAt(i);
-                }
-            }
-            yield return 0;
+            Builder.LoadShaders(bundle);
         }
-        callback(entry);
+        callback?.Invoke(bundle);
     }
 
     public static IEnumerator DownloadAsset(UmaDatabaseEntry entry, System.Action<bool> callback)
