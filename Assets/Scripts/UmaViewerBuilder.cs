@@ -758,7 +758,7 @@ public class UmaViewerBuilder : MonoBehaviour
     {
         if (CurrentOtherContainer != null)
         {
-            Destroy(CurrentOtherContainer.gameObject);
+            DestroyImmediate(CurrentOtherContainer.gameObject);
         }
     }
 
@@ -766,7 +766,7 @@ public class UmaViewerBuilder : MonoBehaviour
     {
         if (CurrentLiveContainer != null)
         {
-            Destroy(CurrentLiveContainer.gameObject);
+            DestroyImmediate(CurrentLiveContainer.gameObject);
         }
     }
 
@@ -774,7 +774,30 @@ public class UmaViewerBuilder : MonoBehaviour
     {
         if (CurrentUMAContainer != null)
         {
-            Destroy(CurrentUMAContainer.gameObject);
+            DestroyImmediate(CurrentUMAContainer.gameObject);
+        }
+    }
+
+    public void InterruptLoading()
+    {
+        if (LoadingInProgress)
+        {
+            if(CurrentUMAContainer != null)
+            {
+                CurrentUMAContainer.StopAllCoroutines();
+                UnloadUma();
+            }
+            if (CurrentOtherContainer != null)
+            {
+                CurrentOtherContainer.StopAllCoroutines();
+                UnloadProp();
+            }
+            if (CurrentLiveContainer != null)
+            {
+                CurrentLiveContainer.StopAllCoroutines();
+                UnloadLive();
+            }
+            LoadingInProgress = false;
         }
     }
 }

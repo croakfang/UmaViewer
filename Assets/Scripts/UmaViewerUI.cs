@@ -90,6 +90,8 @@ public class UmaViewerUI : MonoBehaviour
 
     public FaceDrivenKeyTarget currentFaceDrivenKeyTarget;
 
+    private IEnumerator UpdateResVerCoroutine;
+
     private void Awake()
     {
         Instance = this;
@@ -742,8 +744,6 @@ public class UmaViewerUI : MonoBehaviour
         }
     }
 
-
-
     public void AudioPause()
     {
         if (Builder.CurrentAudioSources.Count>0)
@@ -948,4 +948,12 @@ public class UmaViewerUI : MonoBehaviour
             }
         }
     }
+
+    public void UpdateGameDB() {
+        if (UpdateResVerCoroutine != null) return;
+        ManifestDB dB = new ManifestDB();
+        UpdateResVerCoroutine = dB.UpdateResourceVersion(delegate (string msg) { LyricsText.text = msg; });
+        StartCoroutine(UpdateResVerCoroutine);
+    }
+
 }

@@ -1,9 +1,11 @@
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
+using Debug = UnityEngine.Debug;
 
 public class UmaViewerDownload : MonoBehaviour
 {
@@ -12,28 +14,25 @@ public class UmaViewerDownload : MonoBehaviour
     private static UmaViewerBuilder Builder => UmaViewerBuilder.Instance;
     private static UmaViewerUI UI => UmaViewerUI.Instance;
 
+    public static string MANIFEST_ROOT_URL = "https://prd-storage-app-umamusume.akamaized.net/dl/resources/Manifest";
+    public static string GENERIC_BASE_URL = "https://prd-storage-umamusume.akamaized.net/dl/resources/Generic";
+    public static string ASSET_BASE_URL = "https://prd-storage-umamusume.akamaized.net/dl/resources/Windows/assetbundles/";
+
     public static IEnumerator DownloadText(string url, System.Action<string> callback)
     {
-        if (PlayerPrefs.GetString(url, "")=="")
+        UnityWebRequest www = UnityWebRequest.Get(url);
+        www.timeout = 3;
+        yield return www.SendWebRequest();
+        
+        if (www.result != UnityWebRequest.Result.Success)
         {
-            UnityWebRequest www = UnityWebRequest.Get(url);
-            yield return www.SendWebRequest();
-
-            if (www.result != UnityWebRequest.Result.Success)
-            {
-                Debug.Log(www.error);
-            }
-            else
-            {
-                PlayerPrefs.SetString(url, www.downloadHandler.text);
-                callback(www.downloadHandler.text);
-            }
+            Debug.Log(www.error);
+            callback("");
         }
         else
         {
-            callback(PlayerPrefs.GetString(url, ""));
+            callback(www.downloadHandler.text);
         }
-
     }
 
     public static IEnumerator DownOrLoadAsset(GameObject caller, UmaDatabaseEntry entry, System.Action<AssetBundle> callback = null)
@@ -47,9 +46,9 @@ public class UmaViewerDownload : MonoBehaviour
             yield break;
         }
 
-        var dependencies = entry.Prerequisites.Split(new char[] {';'}, System.StringSplitOptions.RemoveEmptyEntries).ToList();
+        var dependencies = entry.Prerequisites.Split(new char[] { ';' }, System.StringSplitOptions.RemoveEmptyEntries).ToList();
         Main.DownloadingBundles.AddRange(dependencies);
-        foreach(var dependency in dependencies)
+        foreach (var dependency in dependencies)
         {
             var dep = Main.AbList.FirstOrDefault(a => a.Name == dependency);
             yield return dep.LoadAssetBundle(caller);
@@ -65,7 +64,7 @@ public class UmaViewerDownload : MonoBehaviour
                 result = value;
             });
             if (!result)
-            { 
+            {
                 Debug.LogError($"{entry.Name} - {filePath} download failed");
                 callback.Invoke(null);
                 yield break;
@@ -105,5 +104,20 @@ public class UmaViewerDownload : MonoBehaviour
                 callback(true);
             }
         }
+    }
+
+    public static string GetManifestRequestUrl(string hash)
+    {
+        return $"{MANIFEST_ROOT_URL}/{hash.Substring(0, 2)}/{hash}";
+    }
+
+    public static string GetGenericRequestUrl(string hash)
+    {
+        return $"{GENERIC_BASE_URL}/{hash.Substring(0, 2)}/{hash}";
+    }
+    
+    public static string GetAssetRequestUrl(string hash)
+    {
+        return $"{ASSET_BASE_URL}/{hash.Substring(0, 2)}/{hash}";
     }
 }
