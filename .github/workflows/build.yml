@@ -69,6 +69,7 @@ jobs:
           path: build/
 
       - name: Create Release
+        if: matrix.targetPlatform == 'StandaloneWindows64'
         id: create_release
         uses: actions/create-release@v1
         env:
