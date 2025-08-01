@@ -103,9 +103,9 @@ public class ModelExporter
         SkinnedMeshRenderer earMesh = null;
         foreach (SkinnedMeshRenderer s in container.GetComponentsInChildren<SkinnedMeshRenderer>())
         {
-            if (s.name.Contains("M_Face")) faceMesh = s;
-            else if (s.name.Contains("M_Mayu")) eyebrowMesh = s;
-            else if (s.name.Contains("M_Hair")) earMesh = s;
+            if (s.name.Equals("M_Face")) faceMesh = s;
+            else if (s.name.Equals("M_Mayu")) eyebrowMesh = s;
+            else if (s.name.Equals("M_Hair")) earMesh = s;
         }
 
         var facial = container.FaceDrivenKeyTarget;
@@ -120,10 +120,10 @@ public class ModelExporter
 
                 Mesh deltaMesh = new Mesh();
                 skin.BakeMesh(deltaMesh);
-                skin.sharedMesh.AddBlendShapeFrame( $"{morph.name}({morph.tag})[{skin.name}]", 1,
-                        CalDelta(baseMesh.vertices, deltaMesh.vertices),
-                        CalDelta(baseMesh.normals, deltaMesh.normals),
-                        CalDelta(Vec4ToVec3(baseMesh.tangents), Vec4ToVec3(deltaMesh.tangents)));
+                var deltaVertices = CalDelta(baseMesh.vertices, deltaMesh.vertices);
+                var deltaNormals = CalDelta(baseMesh.normals, deltaMesh.normals);
+                var deltaTangents = CalDelta(Vec4ToVec3(baseMesh.tangents), Vec4ToVec3(deltaMesh.tangents));
+                skin.sharedMesh.AddBlendShapeFrame($"{morph.name}({morph.tag})[{skin.name}]", 1, deltaVertices, deltaNormals, deltaTangents);
             }
         };
 
