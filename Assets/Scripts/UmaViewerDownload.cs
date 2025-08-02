@@ -18,7 +18,6 @@ public class UmaViewerDownload : MonoBehaviour
 #else
     public static string ASSET_BASE_URL = "https://prd-storage-game-umamusume.akamaized.net/dl/resources/Windows/assetbundles/";
 #endif
-#endif
 
     private const int maxConcurrentDownloads = 30;
     private static SemaphoreSlim semaphore = new SemaphoreSlim(maxConcurrentDownloads);
