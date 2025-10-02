@@ -2,12 +2,7 @@
 
 Unity application that makes it easy to view assets from Uma Musume: Pretty Derby.
 
-| Version   | Supported |
-|-----------|-----------|
-| JP (DMM)  | ✅        |
-| JP (Steam)| ✅        |
-| KR        | ✅        |
-| Global    | ✅        |
+## ! EN/Global users !
 
 ------------
 
