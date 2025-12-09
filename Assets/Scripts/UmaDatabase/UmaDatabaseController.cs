@@ -258,7 +258,7 @@ public class UmaDatabaseController
                 throw new InvalidOperationException("DB validation after key failed: " + validateErr);
             }
 
-            string sql = "SELECT m,n,h,c,d,e FROM a";
+            string sql = "SELECT m,n,h,c,d,e,l FROM a";
             Sqlite3MC.ForEachRow(sql, db, (stmt) =>
             {
                 try
@@ -269,6 +269,7 @@ public class UmaDatabaseController
                     string c = Sqlite3MC.ColumnText(stmt, 3);
                     string d = Sqlite3MC.ColumnText(stmt, 4);
                     long e = Sqlite3MC.ColumnInt64(stmt, 5);
+                    long l = Sqlite3MC.ColumnInt64(stmt, 6);
 
                     if (string.IsNullOrEmpty(m))
                     {
@@ -295,7 +296,8 @@ public class UmaDatabaseController
                         Url = h,
                         Checksum = c,
                         Prerequisites = d,
-                        Key = e
+                        Key = e,
+                        Size = l,
                     };
 
                     if (!meta.ContainsKey(entry.Name))

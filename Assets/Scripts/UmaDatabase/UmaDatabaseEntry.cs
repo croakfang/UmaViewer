@@ -12,6 +12,7 @@ public class UmaDatabaseEntry
     public string Checksum;
     public string Prerequisites;
     public long Key;
+    public long Size;
     private byte[] fKey;
 
     public bool IsEncrypted => Key != 0;
@@ -55,9 +56,12 @@ public class UmaDatabaseEntry
     {
         get
         {
-            if (Config.Instance.DownloadMissingResources && !File.Exists(Path))
+            if (Config.Instance.DownloadMissingResources)
             {
-                DownloadAsset(this);
+                if (!File.Exists(Path) || new FileInfo(Path).Length != Size)
+                {
+                    DownloadAsset(this);
+                } 
             }
             return Path;
         }
