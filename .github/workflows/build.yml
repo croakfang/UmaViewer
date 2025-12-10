@@ -23,6 +23,17 @@ jobs:
           - Android # Build an Android APK.
           - StandaloneWindows64 # Build a Windows 64-bit standalone
     steps:
+      - name: Free Disk Space
+        uses: endersonmenezes/free-disk-space@main
+        with: 
+          remove_android:  false
+          remove_dotnet: true            # 移除 .NET
+          remove_haskell: true           # 移除 Haskell
+          remove_tool_cache: true        # 移除工具缓存
+          remove_swap: true              # 移除 swap
+          remove_codeql: true            # 移除 CodeQL
+          remove_docker_images: true     # 移除 Docker 镜像
+    
       - uses: actions/checkout@v2
         with:
           lfs: true
