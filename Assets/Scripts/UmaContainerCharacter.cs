@@ -1,4 +1,5 @@
 using Gallop;
+using Gallop.Model.Component;
 using RootMotion;
 using RootMotion.Dynamics;
 using RootMotion.FinalIK;
@@ -43,6 +44,7 @@ public class UmaContainerCharacter : UmaContainer
     public float EyeHeight;
     public bool EnableEyeTracking = true;
     public Material FaceMaterial;
+    public FacialAdditiveMotionController FacialAdditiveController;
 
     [Header("Cheek")]
     public Texture CheekTex_0;
@@ -384,6 +386,14 @@ public class UmaContainerCharacter : UmaContainer
         FaceOverrideData?.SetEnable(isOn);
     }
 
+    private void OnDestroy()
+    {
+        if (FacialAdditiveController)
+        {
+            FacialAdditiveController.Destruct();
+        }
+    }
+
     private void FixedUpdate()
     {
         if (IsMini) return;
@@ -413,6 +423,10 @@ public class UmaContainerCharacter : UmaContainer
         if (isAnimatorControl)
         {
             FaceDrivenKeyTarget.ProcessLocator();
+            if (FacialAdditiveController != null && FacialAdditiveController.IsPlaying())
+            {
+                FacialAdditiveController.Update(Time.fixedDeltaTime);
+            }
         }
 
         if (FaceMaterial)
@@ -1214,6 +1228,11 @@ public class UmaContainerCharacter : UmaContainer
             if (IsMini) return;
             LoadFaceAnimation(clip);
         }
+        else if (clip.name.EndsWith("_face_additive"))
+        {
+            if (IsMini) return;
+            LoadFaceAnimation(clip);
+        }
         else if (clip.name.Contains("_ear"))
         {
             if (IsMini) return;
@@ -1288,6 +1307,21 @@ public class UmaContainerCharacter : UmaContainer
             if (Main.AbList.TryGetValue($"{clip.name.Replace("/body", "/facial")}_face", out UmaDatabaseEntry facialMotion))
             {
                 LoadAnimation(facialMotion);
+            }
+
+            var add_dir_name = Path.GetDirectoryName(clip.name.Replace("/body", "/facial"));
+            var add_file_name = Path.GetFileName(clip.name);
+            if (Main.AbList.TryGetValue($"{add_dir_name.Replace(Path.DirectorySeparatorChar, '/')}/additive/{add_file_name}_face_additive_data", out UmaDatabaseEntry additiveData))
+            {
+                var data = additiveData.Get<FacialAdditiveMotionAsset>();
+                if (data != null && data.AnimationClip)
+                {
+                    LoadAnimation(data.AnimationClip);
+                }
+            }
+            else if(FacialAdditiveController)
+            {
+                FacialAdditiveController.StartPlay(null);
             }
 
             if (Main.AbList.TryGetValue($"{clip.name.Replace("/body", "/facial")}_ear", out UmaDatabaseEntry earMotion))
@@ -1374,6 +1408,17 @@ public class UmaContainerCharacter : UmaContainer
         else if (clip.name.Contains("_e_"))
         {
             FaceOverrideController["clip_e"] = clip;
+        }
+        else if (clip.name.EndsWith("_face_additive"))
+        {
+            if (HeadBone)
+            {
+                if (FacialAdditiveController == null)
+                {
+                    FacialAdditiveController = new FacialAdditiveMotionController(HeadBone.transform, name, FaceDrivenKeyTarget);
+                }
+                FacialAdditiveController.StartPlay(clip);
+            }
         }
         else if (clip.name.Contains("_loop"))
         {

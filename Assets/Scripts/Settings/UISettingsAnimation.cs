@@ -39,15 +39,18 @@ public class UISettingsAnimation : MonoBehaviour
 
         var animator = container.UmaAnimator;
         var animator_face = container.UmaFaceAnimator;
+        var face_add = container.FacialAdditiveController;
         var animator_cam = Builder.AnimationCameraAnimator;
         var AnimeState = animator.GetCurrentAnimatorStateInfo(0);
         var state = animator.speed > 0f;
         if (state)
         {
             animator.speed = 0;
+            animator_cam.speed = 0;
             if (animator_face)
                 animator_face.speed = 0;
-            animator_cam.speed = 0;
+            if (face_add)
+                face_add.SetSpeed(0);
         }
         else if (AnimeState.normalizedTime < 1f)
         {
@@ -55,6 +58,8 @@ public class UISettingsAnimation : MonoBehaviour
             animator_cam.speed = SpeedSlider.value;
             if (animator_face)
                 animator_face.speed = SpeedSlider.value;
+            if (face_add)
+                face_add.SetSpeed(SpeedSlider.value);
         }
         else
         {
@@ -69,6 +74,11 @@ public class UISettingsAnimation : MonoBehaviour
                 animator_face.Play(0, 0, 0);
                 animator_face.Play(0, 1, 0);
             }
+            if (face_add)
+            {
+                face_add.SetSpeed(SpeedSlider.value);
+                face_add.SetTime(0);
+            }
         }
     }
 
@@ -78,6 +88,7 @@ public class UISettingsAnimation : MonoBehaviour
         if (!container) return;
         var animator = container.UmaAnimator;
         var animator_face = container.UmaFaceAnimator;
+        var face_add = container.FacialAdditiveController;
         var animator_cam = Builder.AnimationCameraAnimator;
         if (animator != null)
         {
@@ -98,6 +109,11 @@ public class UISettingsAnimation : MonoBehaviour
                 animator_face.Play(0, 0, val);
                 animator_face.Play(0, 1, val);
             }
+            if (face_add)
+            {
+                face_add.SetSpeed(0);
+                face_add.SetTime(val);
+            }
 
             ProgressText.text = string.Format("{0} / {1}", ToFrameFormat(val * AnimeClip.length, AnimeClip.frameRate), ToFrameFormat(AnimeClip.length, AnimeClip.frameRate));
         }
@@ -115,6 +131,10 @@ public class UISettingsAnimation : MonoBehaviour
         if (container.UmaFaceAnimator)
         {
             container.UmaFaceAnimator.speed = val;
+        }
+        if (container.FacialAdditiveController)
+        {
+            container.FacialAdditiveController.SetSpeed(val);
         }
     }
 
