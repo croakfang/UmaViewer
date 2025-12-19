@@ -17,6 +17,9 @@ public class Config
     public string DBKeyTip = "Key to read game database files";
     public string DBKeyText;
 
+    public string GlobalDBKeyTip = "Key to read game database files (for Global)";
+    public string GlobalDBKeyText;
+
     public string ABKeyTip = "Key to read asset bundles";
     public string ABKeyText;
 
@@ -122,6 +125,13 @@ public class Config
         0x37, 0x34, 0x53, 0x29, 0x73, 0x43,
         0x36, 0x33
     };
+
+    [NonSerialized]
+    public byte[] GlobalDBKey = new byte[]
+    {
+            0x56, 0x63, 0x6B, 0x63, 0x42, 0x72, 0x37, 0x76, 0x65, 0x70, 0x41, 0x62,
+    };
+
     [NonSerialized]
     public byte[] ABKey = new byte[]
     {
@@ -179,6 +189,13 @@ public class Config
                 else
                 {
                     ABKey = HexToByteArray(ABKeyText);
+                }
+                if (string.IsNullOrEmpty(GlobalDBKeyText))
+                {
+                    GlobalDBKeyText = ByteArrayToHex(GlobalDBKey);
+                } else
+                {
+                    GlobalDBKey = HexToByteArray(GlobalDBKeyText);
                 }
                 File.WriteAllText(configPath, JsonUtility.ToJson(this, true));
             }

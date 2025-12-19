@@ -59,6 +59,11 @@ public class UmaDatabaseController
     {
         try
         {
+            var dbKey = Config.Instance.DBKey;
+            if (Config.Instance.Region == Region.Global)
+            {
+                dbKey = Config.Instance.GlobalDBKey;
+            }
             if (Config.Instance.WorkMode == WorkMode.Standalone)
             {
                 if (!File.Exists($@"{Config.Instance.MainPath}/meta_umaviewer")) throw new Exception();
@@ -82,7 +87,7 @@ public class UmaDatabaseController
                 try
                 {
                     var dbPath = $@"{Config.Instance.MainPath}/meta";
-                    var key = GenFinalKey(Config.Instance.DBKey);
+                    var key = GenFinalKey(dbKey);
                     MetaEntries = ReadMetaFromEncryptedDb(dbPath, key, 3);
                 }
                 catch (Exception)
