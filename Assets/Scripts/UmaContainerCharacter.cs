@@ -1415,7 +1415,8 @@ public class UmaContainerCharacter : UmaContainer
             {
                 if (FacialAdditiveController == null)
                 {
-                    FacialAdditiveController = new FacialAdditiveMotionController(HeadBone.transform, name, FaceDrivenKeyTarget);
+                    var ini_speed = UmaAnimator? UmaAnimator.speed : 1f;
+                    FacialAdditiveController = new FacialAdditiveMotionController(HeadBone.transform, name, ini_speed);
                 }
                 FacialAdditiveController.StartPlay(clip);
             }

@@ -28,10 +28,11 @@ namespace Gallop.Model.Component
             return instance != null;
         }
 
-        public FacialAdditiveMotionController(Transform parent, string name, FaceDrivenKeyTarget faceDriven)
+        public FacialAdditiveMotionController(Transform parent, string name, float speed)
         {
             _parent = parent;
             _name = name;
+            _speed = speed;
         }
 
         public void StartPlay(AnimationClip clip)
