@@ -67,6 +67,11 @@ public class UmaContainerCharacter : UmaContainer
     public string VarCostumeIdShort, VarCostumeIdLong, VarSkin, VarHeight, VarSocks, VarBust;
     public TextureList GenericBodyTextures = new TextureList();
 
+    //Tweak
+    public TextureList SwitchWetTextures = new TextureList();
+    public bool EnableSwitchWet = false;
+    public string VarHeadCostumeId;
+
     [Header("Mini")]
     public bool IsMini = false;
     public TextureList MiniHeadTextures = new TextureList();
@@ -89,6 +94,156 @@ public class UmaContainerCharacter : UmaContainer
 
     private List<UmaDatabaseEntry> LoadedAssets = new List<UmaDatabaseEntry>();
 
+
+
+
+    //Tweak
+    private readonly Dictionary<string, Texture2D> _originalTextureCache = new Dictionary<string, Texture2D>();
+
+    private static readonly string[] WetSwitchPropertyNames =
+    {
+    "_MainTex",
+    "_ToonMap",
+    "_TripleMaskMap",
+    "_OptionMaskMap"
+};
+
+    private string GetMaterialTextureCacheKey(Renderer renderer, Material material, string propertyName)
+    {
+        return $"{renderer.GetInstanceID()}|{material.GetInstanceID()}|{propertyName}";
+    }
+
+    public void SetSwitchWetEnable(bool isOn)
+    {
+        EnableSwitchWet = isOn;
+
+        if (transform.childCount == 0)
+            return;
+
+        RefreshSwitchWetTextures();
+    }
+
+    private void RefreshSwitchWetTextures()
+    {
+        foreach (Renderer r in GetComponentsInChildren<Renderer>(true))
+        {
+            if (r == null)
+                continue;
+
+            bool isTargetRenderer =
+                r.name.StartsWith("M_Body") ||
+                r.name.StartsWith("M_Tail") ||
+                r.name.StartsWith("M_Hair") ||
+                r.name.StartsWith("M_Face");
+
+            if (!isTargetRenderer)
+                continue;
+
+            foreach (Material m in r.materials)
+            {
+                if (m == null)
+                    continue;
+
+                foreach (string propertyName in WetSwitchPropertyNames)
+                {
+                    if (!m.HasProperty(propertyName))
+                        continue;
+
+                    Texture2D currentTex = m.GetTexture(propertyName) as Texture2D;
+                    if (currentTex == null)
+                        continue;
+
+                    string cacheKey = GetMaterialTextureCacheKey(r, m, propertyName);
+
+                    if (!_originalTextureCache.ContainsKey(cacheKey))
+                    {
+                        if (!currentTex.name.EndsWith("_wet"))
+                        {
+                            _originalTextureCache[cacheKey] = currentTex;
+                        }
+                    }
+
+                    Texture2D targetTex = null;
+
+                    if (EnableSwitchWet)
+                    {
+                        if (_originalTextureCache.TryGetValue(cacheKey, out var originalTex) && originalTex != null)
+                        {
+                            string wetName = originalTex.name + "_wet";
+                            targetTex = SwitchWetTextures.LoadLast(t => t.name == wetName);
+
+                            if (targetTex == null)
+                            {
+                                targetTex = FindWetTextureFallback(r, propertyName);
+                            }
+                        }
+                    }
+                    else
+                    {
+                        if (_originalTextureCache.TryGetValue(cacheKey, out var originalTex))
+                        {
+                            targetTex = originalTex;
+                        }
+                    }
+
+                    if (targetTex != null && targetTex != currentTex)
+                    {
+                        m.SetTexture(propertyName, targetTex);
+                    }
+                }
+            }
+        }
+    }
+
+    private Texture2D FindWetTextureFallback(Renderer renderer, string propertyName)
+    {
+        if (renderer == null || CharaEntry == null)
+            return null;
+
+        string suffix = propertyName switch
+        {
+            "_MainTex" => "diff",
+            "_ToonMap" => "shad_c",
+            "_TripleMaskMap" => "base",
+            "_OptionMaskMap" => "ctrl",
+            _ => null
+        };
+
+        if (suffix == null)
+            return null;
+
+        string prefix = null;
+
+        if (renderer.name.StartsWith("M_Body"))
+        {
+            if (IsGeneric || string.IsNullOrEmpty(VarCostumeIdLong))
+                return null;
+
+            prefix = $"tex_bdy{CharaEntry.Id}_{VarCostumeIdLong}";
+        }
+        else if (renderer.name.StartsWith("M_Hair"))
+        {
+            if (string.IsNullOrEmpty(VarHeadCostumeId))
+                return null;
+
+            prefix = $"tex_chr{CharaEntry.Id}_{VarHeadCostumeId}_hair";
+        }
+
+        if (prefix == null)
+            return null;
+
+        string wetName = $"{prefix}_{suffix}_wet";
+        return SwitchWetTextures.LoadLast(t => t.name == wetName);
+    }
+
+    public void ClearSwitchWetCache()
+    {
+        _originalTextureCache.Clear();
+    }
+
+
+
+
     public class TextureList
     {
         public class TextureSource
@@ -106,6 +261,12 @@ public class UmaContainerCharacter : UmaContainer
 
         private List<TextureSource> _list = new List<TextureSource>();
 
+        //Tweak
+        public bool Contains(string textureName)
+        {
+                return _list.Any(t => t.Texture != null && t.Texture.name == textureName);
+        }
+
         public Texture2D Load(Func<Texture2D, bool> predicate)
         {
             var entry = _list.FirstOrDefault(t => predicate(t.Texture));
@@ -121,6 +282,13 @@ public class UmaContainerCharacter : UmaContainer
         public Texture2D LoadLast(Func<Texture2D, bool> predicate)
         {
             var entry = _list.LastOrDefault(t => predicate(t.Texture));
+
+            //Tweak
+            if (entry == null)
+            {
+                return null;
+            }
+
             entry.Used = true;
             return entry.Texture;
         }
@@ -550,10 +718,17 @@ public class UmaContainerCharacter : UmaContainer
         return ik;
     }
 
+
+    //Tweak
     public void LoadTextures(UmaDatabaseEntry entry)
     {
-        foreach(Texture2D tex2D in entry.GetAll<Texture2D>())
+        var textures = entry.GetAll<Texture2D>().ToArray();
+
+        foreach (Texture2D tex2D in textures)
         {
+            if (tex2D == null)
+                continue;
+
             if (entry.Name.Contains("/mini/head"))
             {
                 MiniHeadTextures.Add(tex2D, entry);
@@ -571,8 +746,14 @@ public class UmaContainerCharacter : UmaContainer
                 if (IsMob)
                     MobHeadTextures.Add(tex2D, entry);
             }
+
+            if (!SwitchWetTextures.Contains(tex2D.name))
+            {
+                SwitchWetTextures.Add(tex2D, entry);
+            }
         }
     }
+
 
     public void LoadBody(UmaDatabaseEntry entry)
     {
@@ -723,8 +904,12 @@ public class UmaContainerCharacter : UmaContainer
         {
             foreach (Renderer r in Body.GetComponentsInChildren<Renderer>())
             {
-                foreach (Material m in r.sharedMaterials)
+
+                //Tweak
+                foreach (Material m in r.materials)
                 {
+                    m.name = m.name.Replace(" (Instance)", "");
+
                     //BodyAlapha's shader need to change manually.
                     if (m.name.Contains("bdy") && m.name.Contains("Alpha"))
                     {
@@ -956,14 +1141,21 @@ public class UmaContainerCharacter : UmaContainer
     }
 
 
-
     //修改(载入专用尾巴相关)
+    //Tweak
     public void LoadExclusiveTail(UmaDatabaseEntry entry)
     {
         GameObject go = entry.Get<GameObject>();
         Tail = Instantiate(go, transform);
-    }
 
+        foreach (Renderer r in Tail.GetComponentsInChildren<Renderer>(true))
+        {
+            foreach (Material m in r.materials)
+            {
+                m.name = m.name.Replace(" (Instance)", "");
+            }
+        }
+    }
 
 
     public void LoadTail(UmaDatabaseEntry entry)

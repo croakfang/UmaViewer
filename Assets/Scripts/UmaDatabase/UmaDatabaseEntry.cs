@@ -52,17 +52,30 @@ public class UmaDatabaseEntry
         }
     }
 
+    //Tweak
     public string FilePath
     {
         get
         {
             if (Config.Instance.DownloadMissingResources)
             {
-                if (!File.Exists(Path) || new FileInfo(Path).Length != Size)
+                if (!File.Exists(Path))
                 {
                     DownloadAsset(this);
-                } 
+                }
+                else
+                {
+                    long localSize = new FileInfo(Path).Length;
+                    if (localSize != Size)
+                    {
+                        UmaViewerUI.Instance?.ShowMessage(
+                            $"Resource size mismatch, using local file: {Name}",
+                            UIMessageType.Warning
+                        );
+                    }
+                }
             }
+
             return Path;
         }
     }
