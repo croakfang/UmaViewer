@@ -139,11 +139,30 @@ public class Config
     };
 
 
+    //Tweak
+    private bool IsValidMainPath(string path)
+    {
+        if (string.IsNullOrEmpty(path) || !Directory.Exists(path))
+            return false;
+
+        return Directory.Exists(Path.Combine(path, "dat")) &&
+               File.Exists(Path.Combine(path, "meta")) &&
+               Directory.Exists(Path.Combine(path, "master"));
+    }
+
+
     public Config()
     {
         Version = Application.version;
 
-        MainPath = $@"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low"}\Cygames\umamusume";
+        //Tweak
+        string defaultPath1 = $@"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low"}\Cygames\umamusume";
+        string defaultPath2 = $@"{Environment.GetFolderPath(Environment.SpecialFolder.UserProfile)}\Umamusume\umamusume_Data\Persistent";
+
+        MainPath = IsValidMainPath(defaultPath1) ? defaultPath1 :
+                           IsValidMainPath(defaultPath2) ? defaultPath2 :
+                           defaultPath1;
+
         if (Application.isMobilePlatform)
         {
             WorkMode = WorkMode.Standalone;
@@ -202,7 +221,12 @@ public class Config
             catch (Exception ex)
             {
                 UmaViewerUI.Instance.ShowMessage("Config load error. Using default. " + ex.Message, UIMessageType.Error);
-                MainPath = $@"{Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData) + "Low"}\Cygames\umamusume";
+
+                //Tweak
+                MainPath = IsValidMainPath(defaultPath1) ? defaultPath1 :
+                                   IsValidMainPath(defaultPath2) ? defaultPath2 :
+                                   defaultPath1;
+
             }
         }
         Instance = this;

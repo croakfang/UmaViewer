@@ -121,6 +121,11 @@ public class UmaViewerBuilder : MonoBehaviour
 
         UmaDatabaseEntry asset = null;
 
+        //Tweak
+        umaContainer.EnableSwitchWet = UISettingsVariants.Instance != null && UISettingsVariants.Instance.EnableSwitchWet;
+        umaContainer.SwitchWetTextures = new UmaContainerCharacter.TextureList();
+        umaContainer.ClearSwitchWetCache();
+
         umaContainer.VarCostumeIdLong = costumeId;
         if (genericCostume)
         {
@@ -201,6 +206,13 @@ public class UmaViewerBuilder : MonoBehaviour
         }
         else
         {
+
+            //Tweak
+            foreach (var texEntry in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith(UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/textures")))
+            {
+                umaContainer.LoadTextures(texEntry);
+            }
+
             umaContainer.LoadBody(asset);
             //Load Physics
             var asset1 = Main.AbList[UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/clothes/pfb_bdy{id}_{costumeId}_cloth00"];
@@ -249,7 +261,12 @@ public class UmaViewerBuilder : MonoBehaviour
         if (asset != null)
         {
             //Load Hair Textures
-            foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_{head_costumeId}/textures")))
+
+            //Tweak
+            string actualHeadCostumeId = isDefaultHead ? "00" : head_costumeId;
+            umaContainer.VarHeadCostumeId = actualHeadCostumeId;
+            foreach (var asset1 in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{UmaDatabaseController.HeadPath}chr{head_id}_{actualHeadCostumeId}/textures")))
+
             {
                 umaContainer.LoadTextures(asset1);
             }
@@ -270,8 +287,6 @@ public class UmaViewerBuilder : MonoBehaviour
             }
         }
 
-
-
         //修改(载入专用尾巴相关)
         if (tailId > 0)
         {
@@ -282,6 +297,13 @@ public class UmaViewerBuilder : MonoBehaviour
 
             if (Main.AbList.TryGetValue(exclusiveTailPfb, out asset))
             {
+
+                //Tweak
+                foreach (var texEntry in UmaViewerMain.Instance.AbChara.Where(a => a.Name.StartsWith($"{exclusiveTailPath}textures/")))
+                {
+                    umaContainer.LoadTextures(texEntry);
+                }
+
                 umaContainer.LoadExclusiveTail(asset);
 
                 string clothPath = $"{exclusiveTailPath}clothes/pfb_{exclusiveTailName}_cloth00";
@@ -334,6 +356,9 @@ public class UmaViewerBuilder : MonoBehaviour
         umaContainer.Position = umaContainer.transform.Find("Position");
         umaContainer.SetupBoneHandles();
 
+        //Tweak
+        umaContainer.SetSwitchWetEnable(UISettingsVariants.Instance != null && UISettingsVariants.Instance.EnableSwitchWet);
+
         if (!ModelSettings.IsTPose && loadMotion)
         {
             if (Main.AbList.TryGetValue($"3d/motion/event/body/chara/chr{id}_00/anm_eve_chr{id}_00_idle01_loop", out UmaDatabaseEntry entry))
@@ -374,6 +399,12 @@ public class UmaViewerBuilder : MonoBehaviour
         shape = "0";
 
         UmaDatabaseEntry asset = null;
+
+        //Tweak
+        umaContainer.EnableSwitchWet = UISettingsVariants.Instance != null && UISettingsVariants.Instance.EnableSwitchWet;
+        umaContainer.SwitchWetTextures = new UmaContainerCharacter.TextureList();
+        umaContainer.ClearSwitchWetCache();
+
         if (genericCostume)
         {
             costumeIdShort = costumeId.Remove(costumeId.LastIndexOf('_'));
@@ -563,6 +594,9 @@ public class UmaViewerBuilder : MonoBehaviour
 
         umaContainer.Position = umaContainer.transform.Find("Position");
         umaContainer.SetupBoneHandles();
+
+        //Tweak
+        umaContainer.SetSwitchWetEnable(UISettingsVariants.Instance != null && UISettingsVariants.Instance.EnableSwitchWet);
 
         if (!ModelSettings.IsTPose && loadMotion)
         {
