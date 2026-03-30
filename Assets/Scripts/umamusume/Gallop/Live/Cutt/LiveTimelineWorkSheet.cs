@@ -939,6 +939,8 @@ namespace Gallop.Live.Cutt
 
         [SerializeField] public List<LiveTimelineTransformData> transformList;
         [SerializeField] public List<LiveTimelineObjectData> objectList;
+        [SerializeField] public List<LiveTimelineMobCyalumeControlData> mobControlList;
+        [SerializeField] public List<LiveTimelineMobCyalumeControlData> cyalumeControlList;
 
         /*
 		//���ڿ��Ե���AB���ˣ���Ȼ���淢��ûʲô��...˵����ʲôʱ�����õ�
@@ -1020,4 +1022,3 @@ namespace Gallop.Live.Cutt
         }
     }
 }
-

@@ -193,6 +193,8 @@ namespace Gallop.Live.Cutt
 
         private TimelinePlayerMode _playMode = TimelinePlayerMode.Default;
 
+        public TimelinePlayerMode PlayMode => _playMode;
+
         public static int liveCharaPositionMax
         {
             get
@@ -1956,4 +1958,3 @@ private void AlterUpdate_Laser(LiveTimelineWorkSheet workSheet, float currentFra
 
 
 }
-
