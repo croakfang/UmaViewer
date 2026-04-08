@@ -6,6 +6,9 @@ namespace Gallop.Live.Cutt
     [Serializable]
     public class LiveTimelineKeyBlinkLightData : LiveTimelineKeyWithInterpolate
     {
+        // 先不要写 override dataType
+        // 先不要写 override OnLoad
+
         public int LightBlendMode;
         public Color[] color0Array;
         public Color[] color1Array;
@@ -36,7 +39,9 @@ namespace Gallop.Live.Cutt
     }
 
     [Serializable]
-    public class LiveTimelineKeyBlinkLightDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyBlinkLightData> { }
+    public class LiveTimelineKeyBlinkLightDataList : LiveTimelineKeyDataListTemplate<LiveTimelineKeyBlinkLightData>
+    {
+    }
 
     [Serializable]
     public class LiveTimelineBlinkLightData : ILiveTimelineGroupDataWithName

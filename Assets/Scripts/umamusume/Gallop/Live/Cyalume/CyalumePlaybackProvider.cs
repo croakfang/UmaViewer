@@ -29,6 +29,28 @@ namespace Gallop.Live.Cyalume
         public string Signature;
     }
 
+    [Serializable]
+    public class CyalumePartFrame
+    {
+        public float StartTime;
+        public int[] States = new int[7];
+        public float[] Volumes = new float[7];
+        public float[] Pans = new float[7];
+        public float VolumeRate = 1f;
+
+        public int GetState(int zoneIndex)
+        {
+            if (States == null || zoneIndex < 0 || zoneIndex >= States.Length)
+                return 0;
+            return States[zoneIndex];
+        }
+
+        public bool IsActive(int zoneIndex)
+        {
+            return GetState(zoneIndex) != 0;
+        }
+    }
+
     public class CyalumePlaybackProvider : MonoBehaviour
     {
         [Header("Loaded playback data used by CyalumeAutoBinder.")]
@@ -36,6 +58,9 @@ namespace Gallop.Live.Cyalume
 
         [Header("Debug: unique choreography pattern definitions built from the CSV.")]
         public List<CyalumePatternDefinition> patternDefinitions = new List<CyalumePatternDefinition>();
+
+        [Header("Loaded part data used by CyalumeAutoBinder front-region visibility.")]
+        public List<CyalumePartFrame> partFrames = new List<CyalumePartFrame>();
 
         [Header("Auto-load mXXXX_cyalume.csv for the current live.")]
         public bool autoLoadForCurrentLive = true;
@@ -47,9 +72,11 @@ namespace Gallop.Live.Cyalume
 
         [SerializeField] private int _loadedMusicId;
         [SerializeField] private string _loadedCsvSource;
+        [SerializeField] private string _loadedPartCsvSource;
 
         public int LoadedMusicId => _loadedMusicId;
         public string LoadedCsvSource => _loadedCsvSource;
+        public string LoadedPartCsvSource => _loadedPartCsvSource;
 
         private void Start()
         {
@@ -88,8 +115,11 @@ namespace Gallop.Live.Cyalume
 
             data.Clear();
             patternDefinitions.Clear();
+            partFrames.Clear();
+
             _loadedMusicId = musicId;
             _loadedCsvSource = null;
+            _loadedPartCsvSource = null;
 
             if (!TryLoadCsvText(musicId, out string csvText, out string sourceName) || string.IsNullOrEmpty(csvText))
             {
@@ -102,6 +132,21 @@ namespace Gallop.Live.Cyalume
 
             _loadedCsvSource = sourceName;
             BuildPlaybackDataFromCsv(csvText);
+
+            if (TryLoadPartCsvText(musicId, out string partCsvText, out string partSource) && !string.IsNullOrEmpty(partCsvText))
+            {
+                _loadedPartCsvSource = partSource;
+                BuildPartFramesFromCsv(partCsvText);
+
+                if (verboseLog)
+                {
+                    Debug.Log($"[CyalumePlaybackProvider] Loaded part CSV: musicId={musicId}, source={_loadedPartCsvSource}, rows={partFrames.Count}");
+                }
+            }
+            else if (verboseLog)
+            {
+                Debug.LogWarning($"[CyalumePlaybackProvider] Part CSV not found for musicId={musicId}.");
+            }
 
             if (verboseLog)
             {
@@ -135,6 +180,60 @@ namespace Gallop.Live.Cyalume
             }
 
             return current != null;
+        }
+
+        public bool TryGetCurrentPartFrame(float liveTime, out CyalumePartFrame current)
+        {
+            current = null;
+
+            if (partFrames == null || partFrames.Count == 0)
+                return false;
+
+            for (int i = 0; i < partFrames.Count; i++)
+            {
+                var item = partFrames[i];
+                if (item == null)
+                    continue;
+
+                if (item.StartTime <= liveTime)
+                {
+                    current = item;
+                }
+                else
+                {
+                    break;
+                }
+            }
+
+            return current != null;
+        }
+
+        public bool TryGetPatternDefinition(int patternId, out CyalumePatternDefinition definition)
+        {
+            definition = null;
+            if (patternDefinitions == null || patternDefinitions.Count == 0)
+            {
+                return false;
+            }
+
+            for (int i = 0; i < patternDefinitions.Count; i++)
+            {
+                var item = patternDefinitions[i];
+                if (item != null && item.PatternId == patternId)
+                {
+                    definition = item;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        public bool IsRandomPattern(int patternId)
+        {
+            return TryGetPatternDefinition(patternId, out var definition) &&
+                   !string.IsNullOrEmpty(definition.ColorPattern) &&
+                   definition.ColorPattern.StartsWith("Random", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool TryLoadCsvText(int musicId, out string csvText, out string sourceName)
@@ -183,6 +282,61 @@ namespace Gallop.Live.Cyalume
             {
                 TryLoadCsvBundlesFromIndex(liveKeys);
                 if (TryFindCsvInLoadedBundles(liveKeys, out csvText, out sourceName))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private bool TryLoadPartCsvText(int musicId, out string csvText, out string sourceName)
+        {
+            csvText = null;
+            sourceName = null;
+
+            string[] liveKeys = BuildLiveKeyCandidates(musicId);
+
+            for (int i = 0; i < liveKeys.Length; i++)
+            {
+                string liveKey = liveKeys[i];
+                string[] candidates =
+                {
+                    $"live/musicscores/{liveKey}/{liveKey}_part",
+                    $"live/musicscores/{liveKey}/{liveKey}_part.csv",
+                    $"{liveKey}_part"
+                };
+
+                for (int j = 0; j < candidates.Length; j++)
+                {
+                    TextAsset asset = null;
+                    try
+                    {
+                        asset = Resources.Load<TextAsset>(candidates[j]);
+                    }
+                    catch
+                    {
+                        asset = null;
+                    }
+
+                    if (asset != null && !string.IsNullOrEmpty(asset.text))
+                    {
+                        csvText = asset.text;
+                        sourceName = $"Resources/{candidates[j]}";
+                        return true;
+                    }
+                }
+            }
+
+            if (TryFindAuxCsvInLoadedBundles(liveKeys, "part", out csvText, out sourceName))
+            {
+                return true;
+            }
+
+            if (tryLoadBundleEntryFromIndex)
+            {
+                TryLoadAuxCsvBundlesFromIndex(liveKeys, "part");
+                if (TryFindAuxCsvInLoadedBundles(liveKeys, "part", out csvText, out sourceName))
                 {
                     return true;
                 }
@@ -255,6 +409,37 @@ namespace Gallop.Live.Cyalume
             }
         }
 
+        private void TryLoadAuxCsvBundlesFromIndex(string[] liveKeys, string suffix)
+        {
+            var main = FindObjectOfType<UmaViewerMain>();
+            if (main == null || main.AbList == null)
+            {
+                return;
+            }
+
+            var entries = main.AbList.Values
+                .Where(e => e != null && !string.IsNullOrEmpty(e.Name))
+                .Where(e => liveKeys.Any(liveKey =>
+                    e.Name.IndexOf($"live/musicscores/{liveKey}/", StringComparison.OrdinalIgnoreCase) >= 0 &&
+                    e.Name.IndexOf($"{liveKey}_{suffix}", StringComparison.OrdinalIgnoreCase) >= 0))
+                .ToList();
+
+            for (int i = 0; i < entries.Count; i++)
+            {
+                try
+                {
+                    UmaAssetManager.LoadAssetBundle(entries[i], neverUnload: true, isRecursive: true);
+                }
+                catch (Exception ex)
+                {
+                    if (verboseLog)
+                    {
+                        Debug.LogWarning($"[CyalumePlaybackProvider] Failed to load {suffix} CSV bundle entry {entries[i]?.Name}: {ex.Message}");
+                    }
+                }
+            }
+        }
+
         private bool TryFindCsvInLoadedBundles(string[] liveKeys, out string csvText, out string sourceName)
         {
             csvText = null;
@@ -314,6 +499,57 @@ namespace Gallop.Live.Cyalume
             return false;
         }
 
+        private bool TryFindAuxCsvInLoadedBundles(string[] liveKeys, string suffix, out string csvText, out string sourceName)
+        {
+            csvText = null;
+            sourceName = null;
+
+            foreach (var assetBundle in AssetBundle.GetAllLoadedAssetBundles())
+            {
+                if (!assetBundle)
+                    continue;
+
+                string[] names;
+                try
+                {
+                    names = assetBundle.GetAllAssetNames();
+                }
+                catch
+                {
+                    continue;
+                }
+
+                if (names == null || names.Length == 0)
+                    continue;
+
+                for (int i = 0; i < names.Length; i++)
+                {
+                    string path = names[i];
+                    if (!IsMatchingAuxCsvPath(path, liveKeys, suffix))
+                        continue;
+
+                    TextAsset textAsset = null;
+                    try
+                    {
+                        textAsset = assetBundle.LoadAsset<TextAsset>(path);
+                    }
+                    catch
+                    {
+                        textAsset = null;
+                    }
+
+                    if (textAsset == null || string.IsNullOrEmpty(textAsset.text))
+                        continue;
+
+                    csvText = textAsset.text;
+                    sourceName = path;
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         private static bool IsMatchingCyalumeCsvPath(string path, string[] liveKeys)
         {
             if (string.IsNullOrEmpty(path) || liveKeys == null || liveKeys.Length == 0)
@@ -332,6 +568,32 @@ namespace Gallop.Live.Cyalume
 
                 string fileName = Path.GetFileNameWithoutExtension(normalized);
                 if (string.Equals(fileName, $"{liveKey}_cyalume", StringComparison.OrdinalIgnoreCase))
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        private static bool IsMatchingAuxCsvPath(string path, string[] liveKeys, string suffix)
+        {
+            if (string.IsNullOrEmpty(path) || liveKeys == null || liveKeys.Length == 0)
+            {
+                return false;
+            }
+
+            string normalized = path.Replace('\\', '/');
+            for (int i = 0; i < liveKeys.Length; i++)
+            {
+                string liveKey = liveKeys[i];
+                if (normalized.IndexOf($"live/musicscores/{liveKey}/", StringComparison.OrdinalIgnoreCase) < 0)
+                {
+                    continue;
+                }
+
+                string fileName = Path.GetFileNameWithoutExtension(normalized);
+                if (string.Equals(fileName, $"{liveKey}_{suffix}", StringComparison.OrdinalIgnoreCase))
                 {
                     return true;
                 }
@@ -437,6 +699,55 @@ namespace Gallop.Live.Cyalume
             {
                 data[i].DataNo = i;
             }
+        }
+
+        private void BuildPartFramesFromCsv(string csvText)
+        {
+            partFrames.Clear();
+
+            if (string.IsNullOrEmpty(csvText))
+                return;
+
+            var rows = ParseCsvRows(csvText);
+            if (rows.Count <= 1)
+                return;
+
+            var headerMap = BuildHeaderMap(rows[0]);
+            if (!headerMap.ContainsKey("time"))
+            {
+                if (verboseLog)
+                {
+                    Debug.LogWarning("[CyalumePlaybackProvider] Part CSV missing time column.");
+                }
+                return;
+            }
+
+            string[] zoneNames = { "left3", "left2", "left", "center", "right", "right2", "right3" };
+
+            for (int rowIndex = 1; rowIndex < rows.Count; rowIndex++)
+            {
+                var row = rows[rowIndex];
+                if (row == null || row.Count == 0)
+                    continue;
+
+                if (!TryParseTimeSeconds(GetCell(row, headerMap, "time"), out float startTime))
+                    continue;
+
+                var frame = new CyalumePartFrame();
+                frame.StartTime = startTime;
+
+                for (int i = 0; i < zoneNames.Length; i++)
+                {
+                    frame.States[i] = ParseIntOrDefault(GetCell(row, headerMap, zoneNames[i]), 0);
+                    frame.Volumes[i] = ParseFloatOrSentinel(GetCell(row, headerMap, zoneNames[i] + "_vol"));
+                    frame.Pans[i] = ParseFloatOrSentinel(GetCell(row, headerMap, zoneNames[i] + "_pan"));
+                }
+
+                frame.VolumeRate = ParseFloatOrDefault(GetCell(row, headerMap, "volume_rate"), 1f);
+                partFrames.Add(frame);
+            }
+
+            partFrames.Sort((a, b) => a.StartTime.CompareTo(b.StartTime));
         }
 
         private static Dictionary<string, int> BuildHeaderMap(List<string> header)
@@ -577,6 +888,34 @@ namespace Gallop.Live.Cyalume
             }
 
             return string.Equals(moveType.Trim(), "Pause", StringComparison.OrdinalIgnoreCase) ? 8 : 0;
+        }
+
+        private static int ParseIntOrDefault(string raw, int fallback)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return fallback;
+
+            if (int.TryParse(raw.Trim(), out int value))
+                return value;
+
+            return fallback;
+        }
+
+        private static float ParseFloatOrDefault(string raw, float fallback)
+        {
+            if (string.IsNullOrWhiteSpace(raw))
+                return fallback;
+
+            if (float.TryParse(raw.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float value))
+                return value;
+
+            return fallback;
+        }
+
+        private static float ParseFloatOrSentinel(string raw)
+        {
+            float value = ParseFloatOrDefault(raw, 999f);
+            return Mathf.Approximately(value, 999f) ? float.NaN : value;
         }
 
         private static List<List<string>> ParseCsvRows(string text)
