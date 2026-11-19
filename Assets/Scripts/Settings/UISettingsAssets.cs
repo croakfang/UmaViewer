@@ -29,17 +29,18 @@ public class UISettingsAssets : MonoBehaviour
                 System.Diagnostics.Process.Start("explorer.exe", "/select," + filePath);
             }
         };
+        //Tweak (AssetList Search)
         LoadedAssetEntries.Add(entry.Name, assetentry);
-        LoadedAssetPageCtrl.AddEntries(assetentry);
+        LoadedAssetPageCtrl.Initialize(LoadedAssetEntries.Values.ToList(), LoadedAssetScrollRect);
     }
 
     public void LoadedAssetsRemove(UmaDatabaseEntry entry)
     {
         if (!LoadedAssetPageCtrl) return;
         if (!LoadedAssetEntries.ContainsKey(entry.Name)) return;
-        var pageEntry = LoadedAssetEntries[entry.Name];
+        //Tweak (AssetList Search)
         LoadedAssetEntries.Remove(entry.Name);
-        LoadedAssetPageCtrl.RemoveEntry(pageEntry);
+        LoadedAssetPageCtrl.Initialize(LoadedAssetEntries.Values.ToList(), LoadedAssetScrollRect);
     }
 
     public void LoadedAssetsClear()

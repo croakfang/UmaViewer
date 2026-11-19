@@ -118,12 +118,18 @@ public class DynamicBone : MonoBehaviour
     float m_Time = 0;
     float m_Weight = 1.0f;
     bool m_DistantDisabled = false;
+    bool m_ResetOnFirstStep;
+    public bool HoldBetweenSurfaceSteps { private get; set; }
+    public bool HoldingSurfacePose { get; private set; }
+    private Quaternion m_PreviousRootRotation;
 
     public class Particle
     {
         public List<DynamicBoneColliderBase> m_Colliders = new List<DynamicBoneColliderBase>();
         public Transform m_Transform = null;
         public int m_ParentIndex = -1;
+        public int m_BoneChildCount;
+        public bool m_PinToAnimatedRoot;
         public float m_Damping = 0;
         public float m_Elasticity = 0;
         public float m_Stiffness = 0;
@@ -205,6 +211,7 @@ public class DynamicBone : MonoBehaviour
     void OnEnable()
     {
         ResetParticlesPosition();
+        m_ResetOnFirstStep = true;
     }
 
     void OnDisable()
@@ -271,11 +278,19 @@ public class DynamicBone : MonoBehaviour
         return m_Weight;
     }
 
+    public bool IsSimulating => isActiveAndEnabled && m_Weight > 0f && !(m_DistantDisable && m_DistantDisabled);
+
     void UpdateDynamicBones(float t)
     {
         if (m_Root == null)
             return;
 
+        // Runtime outfits are merged, rescaled and animated after SetupParticles.
+        if (m_ResetOnFirstStep)
+        {
+            ResetParticlesPosition();
+            m_ResetOnFirstStep = false;
+        }
         m_ObjectScale = Mathf.Abs(transform.lossyScale.x);
         m_ObjectMove = transform.position - m_ObjectPrevPosition;
         m_ObjectPrevPosition = transform.position;
@@ -314,6 +329,12 @@ public class DynamicBone : MonoBehaviour
             }
         }
 
+        // A still skirt already has a complete surface-constrained pose from the
+        // physics step. Re-projecting it on an intervening render frame creates
+        // two alternating poses when rendering faster than the spring update rate.
+        HoldingSurfacePose = loop == 0 && HoldBetweenSurfaceSteps && m_ObjectMove.sqrMagnitude < 1e-12f &&
+                             Quaternion.Angle(transform.rotation, m_PreviousRootRotation) < 0.01f;
+        m_PreviousRootRotation = transform.rotation;
         if (loop > 0)
         {
             for (int i = 0; i < loop; ++i)
@@ -323,7 +344,7 @@ public class DynamicBone : MonoBehaviour
                 m_ObjectMove = Vector3.zero;
             }
         }
-        else
+        else if (!HoldingSurfacePose)
         {
             SkipUpdateParticles();
         }
@@ -390,6 +411,8 @@ public class DynamicBone : MonoBehaviour
             for (int i = 0; i < b.childCount; ++i)
             {
                 Transform child = b.GetChild(i);
+                if (child.TryGetComponent<DynamicBoneColliderBase>(out _)) continue;
+                p.m_BoneChildCount++;
                 bool exclude = false;
                 if (m_Exclusions != null)
                 {
@@ -401,7 +424,7 @@ public class DynamicBone : MonoBehaviour
                     AppendParticles(null, index, boneLength);
             }
 
-            if (b.childCount == 0 && (m_EndLength > 0 || m_EndOffset != Vector3.zero))
+            if (p.m_BoneChildCount == 0 && (m_EndLength > 0 || m_EndOffset != Vector3.zero))
                 AppendParticles(null, index, boneLength);
         }
     }
@@ -481,6 +504,9 @@ public class DynamicBone : MonoBehaviour
             p.m_isCollide = false;
         }
         m_ObjectPrevPosition = transform.position;
+        m_PreviousRootRotation = transform.rotation;
+        HoldingSurfacePose = false;
+        m_Time = 0f;
     }
 
     void UpdateParticles1(float timeVar)
@@ -521,8 +547,6 @@ public class DynamicBone : MonoBehaviour
 
     void UpdateParticles2(float timeVar)
     {
-        Plane movePlane = new Plane();
-
         for (int i = 1; i < Particles.Count; ++i)
         {
             Particle p = Particles[i];
@@ -560,45 +584,50 @@ public class DynamicBone : MonoBehaviour
                 }
             }
 
-            // collide
-            if (p.m_Colliders != null)
-            {
-                float particleRadius = p.m_Radius * m_ObjectScale;
-                for (int j = 0; j < p.m_Colliders.Count; ++j)
-                {
-                    DynamicBoneColliderBase c = p.m_Colliders[j];
-                    if (c != null && c.enabled)                    
-                        p.m_isCollide |= c.Collide(ref p.m_Position, particleRadius);                    
-                }
-            }
-
-            // freeze axis, project to plane 
-            if (m_FreezeAxis != FreezeAxis.None)
-            {
-                switch (m_FreezeAxis)
-                {
-                    case FreezeAxis.X:
-                        movePlane.SetNormalAndPosition(p0.m_Transform.right, p0.m_Position);
-                        break;
-                    case FreezeAxis.Y:
-                        movePlane.SetNormalAndPosition(p0.m_Transform.up, p0.m_Position);
-                        break;
-                    case FreezeAxis.Z:
-                        movePlane.SetNormalAndPosition(p0.m_Transform.forward, p0.m_Position);
-                        break;
-                }
-                p.m_Position -= movePlane.normal * movePlane.GetDistanceToPoint(p.m_Position);
-            }
-
-            // keep length
-            Vector3 dd = p0.m_Position - p.m_Position;
-            float leng = dd.magnitude;
-            if (leng > 0)
-                p.m_Position += dd * ((leng - restLen) / leng);
+            ConstrainParticle(p, p0, restLen);
         }
     }
 
-    // only update stiffness and keep bone length
+    void ConstrainParticle(Particle tip, Particle parent, float length)
+    {
+        if (tip.m_PinToAnimatedRoot)
+        {
+            var local = tip.m_Transform ? tip.m_Transform.localPosition : tip.m_EndOffset;
+            tip.m_Position = tip.m_PrevPosition = parent.m_Transform.TransformPoint(local);
+            return;
+        }
+        Vector3 planeNormal = Vector3.zero;
+        switch (m_FreezeAxis)
+        {
+            case FreezeAxis.X: planeNormal = parent.m_Transform.right; break;
+            case FreezeAxis.Y: planeNormal = parent.m_Transform.up; break;
+            case FreezeAxis.Z: planeNormal = parent.m_Transform.forward; break;
+        }
+
+        float radius = tip.m_Radius * m_ObjectScale;
+        // Restoring length after one contact can pull the tip inside the surface again.
+        // Alternate projections only while a constraint is actually displacing the tip.
+        const int maxContactPasses = 3;
+        for (int pass = 0; pass <= maxContactPasses; pass++)
+        {
+            var offset = tip.m_Position - parent.m_Position;
+            if (m_FreezeAxis != FreezeAxis.None)
+                offset -= planeNormal * Vector3.Dot(planeNormal, offset);
+            float distance = offset.magnitude;
+            if (distance > 0f)
+                tip.m_Position = parent.m_Position + offset * (length / distance);
+            if (pass == maxContactPasses || tip.m_Colliders == null) break;
+
+            bool moved = false;
+            foreach (var shape in tip.m_Colliders)
+                if (shape && shape.isActiveAndEnabled)
+                    moved |= shape.Collide(ref tip.m_Position, radius);
+            tip.m_isCollide |= moved;
+            if (!moved) break;
+        }
+    }
+
+    // Update attachments between integration steps at render rates above m_UpdateRate.
     void SkipUpdateParticles()
     {
         for (int i = 0; i < Particles.Count; ++i)
@@ -606,8 +635,9 @@ public class DynamicBone : MonoBehaviour
             Particle p = Particles[i];
             if (p.m_ParentIndex >= 0)
             {
-                p.m_PrevPosition += m_ObjectMove;
-                p.m_Position += m_ObjectMove;
+                var carry = m_ObjectMove * p.m_Inert;
+                p.m_PrevPosition += carry;
+                p.m_Position += carry;
 
                 Particle p0 = Particles[p.m_ParentIndex];
 
@@ -636,11 +666,7 @@ public class DynamicBone : MonoBehaviour
                         p.m_Position += d * ((len - maxlen) / len);
                 }
 
-                // keep length
-                Vector3 dd = p0.m_Position - p.m_Position;
-                float leng = dd.magnitude;
-                if (leng > 0)
-                    p.m_Position += dd * ((leng - restLen) / leng);
+                ConstrainParticle(p, p0, restLen);
             }
             else
             {
@@ -694,7 +720,7 @@ public class DynamicBone : MonoBehaviour
             Particle p = Particles[i];
             Particle p0 = Particles[p.m_ParentIndex];
 
-            if (p0.m_Transform.childCount <= 1)		// do not modify bone orientation if has more then one child
+            if (p0.m_BoneChildCount <= 1)
             {
                 Vector3 v;
                 if (p.m_Transform != null)
@@ -717,5 +743,26 @@ public class DynamicBone : MonoBehaviour
             if (p.m_Transform != null)
                 p.m_Transform.position = p.m_Position;
         }
+    }
+
+    // Apply surface contacts after the independent chains have produced a skinned pose.
+    // Propagate a parent's correction through untouched tips and preserve Verlet velocity.
+    public void ApplySurfaceOffsets(Vector3[] offsets, float contactDamping)
+    {
+        for (int i = 1; i < Particles.Count; i++)
+        {
+            var tip = Particles[i];
+            var parent = Particles[tip.m_ParentIndex];
+            var delta = offsets[i] == Vector3.zero ? offsets[tip.m_ParentIndex] : offsets[i];
+            if (delta == Vector3.zero && offsets[tip.m_ParentIndex] == Vector3.zero) continue;
+            var original = tip.m_Position;
+            float length = Vector3.Distance(original, parent.m_Position - offsets[tip.m_ParentIndex]);
+            tip.m_Position += delta;
+            ConstrainParticle(tip, parent, length);
+            offsets[i] = tip.m_Position - original;
+            tip.m_PrevPosition += offsets[i];
+            tip.m_PrevPosition = Vector3.Lerp(tip.m_PrevPosition, tip.m_Position, contactDamping);
+        }
+        ApplyParticlesToTransforms();
     }
 }

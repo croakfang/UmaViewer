@@ -1,10 +1,10 @@
-using System.Collections;
+锘縰sing System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 public class UmaViewerGlobalShader : MonoBehaviour
 {
-    //仅用于设置游戏开局shader全局变量的初始值，若想即时调整请使用Editor内部工具
+    //浠呯敤浜庤缃父鎴忓紑灞�shader鍏ㄥ眬鍙橀噺鐨勫垵濮嬪�硷紝鑻ユ兂鍗虫椂璋冩暣璇蜂娇鐢‥ditor鍐呴儴宸ュ叿
     public float _Global_MaxDensity = 1.0f;
     public float _Global_MaxHeight = 10.0f;
     public float _GlobalOutlineOffset = 1f;

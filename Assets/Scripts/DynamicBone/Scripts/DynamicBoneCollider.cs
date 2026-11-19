@@ -19,178 +19,35 @@ public class DynamicBoneCollider : DynamicBoneColliderBase
         m_Height = Mathf.Max(m_Height, 0);
     }
 
+    public void GetWorldCapsule(out Vector3 center, out Vector3 halfAxis, out float radius)
+    {
+        radius = m_Radius * Mathf.Abs(transform.lossyScale.x);
+        float h = m_Height * 0.5f - m_Radius;
+        center = transform.TransformPoint(m_Center);
+        halfAxis = Vector3.zero;
+        if (h > 0)
+        {
+            var localAxis = m_Direction == Direction.X ? Vector3.right : m_Direction == Direction.Y ? Vector3.up : Vector3.forward;
+            halfAxis = transform.TransformVector(localAxis * h);
+        }
+    }
+
     public override bool Collide(ref Vector3 particlePosition, float particleRadius)
     {
-        float radius = m_Radius * Mathf.Abs(transform.lossyScale.x);
-        float h = m_Height * 0.5f - m_Radius;
-        if (h <= 0)
-        {
-            if (m_Bound == Bound.Outside)
-                return OutsideSphere(ref particlePosition, particleRadius, transform.TransformPoint(m_Center), radius);
-            else
-                return InsideSphere(ref particlePosition, particleRadius, transform.TransformPoint(m_Center), radius);
-        }
-        else
-        {
-            Vector3 c0 = m_Center;
-            Vector3 c1 = m_Center;
+        GetWorldCapsule(out var center, out var axis, out var radius);
+        if (axis.sqrMagnitude > 0)
+            center += axis * Mathf.Clamp(Vector3.Dot(particlePosition - center, axis) / axis.sqrMagnitude, -1f, 1f);
+        var delta = particlePosition - center;
+        bool inside = m_Bound == Bound.Inside;
+        float limit = inside ? Mathf.Max(0f, radius - particleRadius) : radius + particleRadius;
+        float sqrDistance = delta.sqrMagnitude;
+        if (inside ? sqrDistance <= limit * limit : sqrDistance >= limit * limit) return false;
 
-            switch (m_Direction)
-            {
-                case Direction.X:
-                    c0.x -= h;
-                    c1.x += h;
-                    break;
-                case Direction.Y:
-                    c0.y -= h;
-                    c1.y += h;
-                    break;
-                case Direction.Z:
-                    c0.z -= h;
-                    c1.z += h;
-                    break;
-            }
-            if (m_Bound == Bound.Outside)
-                return OutsideCapsule(ref particlePosition, particleRadius, transform.TransformPoint(c0), transform.TransformPoint(c1), radius);
-            else
-                return InsideCapsule(ref particlePosition, particleRadius, transform.TransformPoint(c0), transform.TransformPoint(c1), radius);
-        }
-    }
-
-    static bool OutsideSphere(ref Vector3 particlePosition, float particleRadius, Vector3 sphereCenter, float sphereRadius)
-    {
-        float r = sphereRadius + particleRadius;
-        float r2 = r * r;
-        Vector3 d = particlePosition - sphereCenter;
-        float len2 = d.sqrMagnitude;
-
-        // if is inside sphere, project onto sphere surface
-        if (len2 > 0 && len2 < r2)
-        {
-            float len = Mathf.Sqrt(len2);
-            particlePosition = sphereCenter + d * (r / len);
-            return true;
-        }
-        return false;
-    }
-
-    static bool InsideSphere(ref Vector3 particlePosition, float particleRadius, Vector3 sphereCenter, float sphereRadius)
-    {
-        float r = sphereRadius - particleRadius;
-        float r2 = r * r;
-        Vector3 d = particlePosition - sphereCenter;
-        float len2 = d.sqrMagnitude;
-
-        // if is outside sphere, project onto sphere surface
-        if (len2 > r2)
-        {
-            float len = Mathf.Sqrt(len2);
-            particlePosition = sphereCenter + d * (r / len);
-            return true;
-        }
-        return false;
-    }
-
-    static bool OutsideCapsule(ref Vector3 particlePosition, float particleRadius, Vector3 capsuleP0, Vector3 capsuleP1, float capsuleRadius)
-    {
-        float r = capsuleRadius + particleRadius;
-        float r2 = r * r;
-        Vector3 dir = capsuleP1 - capsuleP0;
-        Vector3 d = particlePosition - capsuleP0;
-        float t = Vector3.Dot(d, dir);
-
-        if (t <= 0)
-        {
-            // check sphere1
-            float len2 = d.sqrMagnitude;
-            if (len2 > 0 && len2 < r2)
-            {
-                float len = Mathf.Sqrt(len2);
-                particlePosition = capsuleP0 + d * (r / len);
-                return true;
-            }
-        }
-        else
-        {
-            float dl = dir.sqrMagnitude;
-            if (t >= dl)
-            {
-                // check sphere2
-                d = particlePosition - capsuleP1;
-                float len2 = d.sqrMagnitude;
-                if (len2 > 0 && len2 < r2)
-                {
-                    float len = Mathf.Sqrt(len2);
-                    particlePosition = capsuleP1 + d * (r / len);
-                    return true;
-                }
-            }
-            else if (dl > 0)
-            {
-                // check cylinder
-                t /= dl;
-                d -= dir * t;
-                float len2 = d.sqrMagnitude;
-                if (len2 > 0 && len2 < r2)
-                {
-                    float len = Mathf.Sqrt(len2);
-                    particlePosition += d * ((r - len) / len);
-                    return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    static bool InsideCapsule(ref Vector3 particlePosition, float particleRadius, Vector3 capsuleP0, Vector3 capsuleP1, float capsuleRadius)
-    {
-        float r = capsuleRadius - particleRadius;
-        float r2 = r * r;
-        Vector3 dir = capsuleP1 - capsuleP0;
-        Vector3 d = particlePosition - capsuleP0;
-        float t = Vector3.Dot(d, dir);
-
-        if (t <= 0)
-        {
-            // check sphere1
-            float len2 = d.sqrMagnitude;
-            if (len2 > r2)
-            {
-                float len = Mathf.Sqrt(len2);
-                particlePosition = capsuleP0 + d * (r / len);
-                return true;
-            }
-        }
-        else
-        {
-            float dl = dir.sqrMagnitude;
-            if (t >= dl)
-            {
-                // check sphere2
-                d = particlePosition - capsuleP1;
-                float len2 = d.sqrMagnitude;
-                if (len2 > r2)
-                {
-                    float len = Mathf.Sqrt(len2);
-                    particlePosition = capsuleP1 + d * (r / len);
-                    return true;
-                }
-            }
-            else if (dl > 0)
-            {
-                // check cylinder
-                t /= dl;
-                d -= dir * t;
-                float len2 = d.sqrMagnitude;
-                if (len2 > r2)
-                {
-                    float len = Mathf.Sqrt(len2);
-                    particlePosition += d * ((r - len) / len);
-                    return true;
-                }
-            }
-        }
-        return false;
+        // On the capsule axis choose a perpendicular in collider space.
+        var direction = sqrDistance > 0 ? delta / Mathf.Sqrt(sqrDistance)
+            : (m_Direction == Direction.X ? transform.up : transform.right);
+        particlePosition = center + direction * limit;
+        return true;
     }
 
     void OnDrawGizmosSelected()

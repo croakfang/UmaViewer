@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEditor;
 using System.IO;
 using Newtonsoft.Json.Linq;
@@ -7,7 +7,7 @@ using Newtonsoft.Json.Linq;
 
 class SelectAllOfTag : ScriptableWizard
 {
-    //´Ëº¯Êı¿É½«ÎŞ·¨¶ÁĞ´µÄTex¿ËÂ¡³ÉÒ»·İ¿É¶ÁĞ´µÄTex£¬ÓÃÓÚÌáÈ¡Í¼Æ¬ÖÁpng
+    //æ­¤å‡½æ•°å¯å°†æ— æ³•è¯»å†™çš„Texå…‹éš†æˆä¸€ä»½å¯è¯»å†™çš„Texï¼Œç”¨äºæå–å›¾ç‰‡è‡³png
     Texture2D duplicateTexture(Texture2D source)
     {
         RenderTexture renderTex = RenderTexture.GetTemporary(
@@ -58,7 +58,7 @@ class SelectAllOfTag : ScriptableWizard
 
         foreach (SkinnedMeshRenderer skin_mesh in gameobj.transform.GetComponentsInChildren<SkinnedMeshRenderer>())
         {
-            //ÌáÈ¡ËùÓĞMeshÖÁÎÄ¼ş¼Ğ
+            //æå–æ‰€æœ‰Meshè‡³æ–‡ä»¶å¤¹
             Mesh m = skin_mesh.sharedMesh;
 
             string m_parent = folder_name + "/Mesh";
@@ -73,7 +73,7 @@ class SelectAllOfTag : ScriptableWizard
             AssetDatabase.RemoveObjectFromAsset(m);
             AssetDatabase.CreateAsset(m, folder_name + "/Mesh/" + m.name + ".mesh");
 
-            //´´½¨Texture2DÎÄ¼ş¼Ğ
+            //åˆ›å»ºTexture2Dæ–‡ä»¶å¤¹
             string tex_parent = folder_name + "/Texture2D";
 
             if (!AssetDatabase.IsValidFolder(tex_parent))
@@ -81,7 +81,7 @@ class SelectAllOfTag : ScriptableWizard
                 AssetDatabase.CreateFolder(folder_name, "Texture2D");
             }
 
-            //´´½¨MaterialÎÄ¼ş¼Ğ
+            //åˆ›å»ºMaterialæ–‡ä»¶å¤¹
             string mat_parent = folder_name + "/Material";
 
             if (!AssetDatabase.IsValidFolder(mat_parent))
@@ -95,7 +95,7 @@ class SelectAllOfTag : ScriptableWizard
                 JArray p_name_list = new JArray();
                 JArray tex_name_list = new JArray();
 
-                //»ñµÃ²ÄÖÊµÄËùÓĞÊôĞÔÃû£¬Èç¹û¸ÄÊôĞÔÃû¶ÔÓ¦µÄÊÇÌùÍ¼£¬ÌáÈ¡¸ÃÌùÍ¼
+                //è·å¾—æè´¨çš„æ‰€æœ‰å±æ€§åï¼Œå¦‚æœæ”¹å±æ€§åå¯¹åº”çš„æ˜¯è´´å›¾ï¼Œæå–è¯¥è´´å›¾
                 Shader mat_shader = mat.shader;
                 int p_num = mat_shader.GetPropertyCount();
                 Debug.Log(p_num);
@@ -120,7 +120,7 @@ class SelectAllOfTag : ScriptableWizard
                                 byte[] bytes = mat_texture.EncodeToPNG();
                                 File.WriteAllBytes(tex_path, bytes);
                             }
-                            //¼ÇÒäÍ¼Æ¬ÓëÊôĞÔÃûÖ®¼äµÄ¹ØÁª
+                            //è®°å¿†å›¾ç‰‡ä¸å±æ€§åä¹‹é—´çš„å…³è”
                             p_name_list.Add(new JValue(p_name));
                             tex_name_list.Add(new JValue(tex_path));
                         }
@@ -128,14 +128,14 @@ class SelectAllOfTag : ScriptableWizard
                 }
 
 
-                //ÌáÈ¡²ÄÖÊ
+                //æå–æè´¨
                 AssetDatabase.RemoveObjectFromAsset(mat);
                 AssetDatabase.CreateAsset(mat, folder_name + "/Material/" + mat.name + ".mat");
 
-                //Ë¢ĞÂ×ÊÔ´£¬½«ËùÓĞÌáÈ¡³öÀ´µÄÍ¼Æ¬ÔØÈëAssets
+                //åˆ·æ–°èµ„æºï¼Œå°†æ‰€æœ‰æå–å‡ºæ¥çš„å›¾ç‰‡è½½å…¥Assets
                 AssetDatabase.Refresh();
 
-                //½«Í¼Æ¬¸½¼Ó½ø²ÄÖÊ
+                //å°†å›¾ç‰‡é™„åŠ è¿›æè´¨
                 for (int i = 0; i < p_name_list.Count; i++)
                 {
                     Debug.Log(p_name_list[i]);
@@ -149,7 +149,7 @@ class SelectAllOfTag : ScriptableWizard
 
         foreach (MeshFilter mf in gameobj.transform.GetComponentsInChildren<MeshFilter>())
         {
-            //ÌáÈ¡ËùÓĞMeshÖÁÎÄ¼ş¼Ğ
+            //æå–æ‰€æœ‰Meshè‡³æ–‡ä»¶å¤¹
             Mesh m = mf.sharedMesh;
 
             string m_parent = folder_name + "/Mesh";
@@ -167,7 +167,7 @@ class SelectAllOfTag : ScriptableWizard
 
         foreach (MeshRenderer mr in gameobj.transform.GetComponentsInChildren<MeshRenderer>())
         {
-            //´´½¨Texture2DÎÄ¼ş¼Ğ
+            //åˆ›å»ºTexture2Dæ–‡ä»¶å¤¹
             string tex_parent = folder_name + "/Texture2D";
 
             if (!AssetDatabase.IsValidFolder(tex_parent))
@@ -175,7 +175,7 @@ class SelectAllOfTag : ScriptableWizard
                 AssetDatabase.CreateFolder(folder_name, "Texture2D");
             }
 
-            //´´½¨MaterialÎÄ¼ş¼Ğ
+            //åˆ›å»ºMaterialæ–‡ä»¶å¤¹
             string mat_parent = folder_name + "/Material";
 
             if (!AssetDatabase.IsValidFolder(mat_parent))
@@ -189,7 +189,7 @@ class SelectAllOfTag : ScriptableWizard
                 JArray p_name_list = new JArray();
                 JArray tex_name_list = new JArray();
 
-                //»ñµÃ²ÄÖÊµÄËùÓĞÊôĞÔÃû£¬Èç¹û¸ÄÊôĞÔÃû¶ÔÓ¦µÄÊÇÌùÍ¼£¬ÌáÈ¡¸ÃÌùÍ¼
+                //è·å¾—æè´¨çš„æ‰€æœ‰å±æ€§åï¼Œå¦‚æœæ”¹å±æ€§åå¯¹åº”çš„æ˜¯è´´å›¾ï¼Œæå–è¯¥è´´å›¾
                 Shader mat_shader = mat.shader;
                 int p_num = mat_shader.GetPropertyCount();
                 Debug.Log(p_num);
@@ -214,7 +214,7 @@ class SelectAllOfTag : ScriptableWizard
                                 byte[] bytes = mat_texture.EncodeToPNG();
                                 File.WriteAllBytes(tex_path, bytes);
                             }
-                            //¼ÇÒäÍ¼Æ¬ÓëÊôĞÔÃûÖ®¼äµÄ¹ØÁª
+                            //è®°å¿†å›¾ç‰‡ä¸å±æ€§åä¹‹é—´çš„å…³è”
                             p_name_list.Add(new JValue(p_name));
                             tex_name_list.Add(new JValue(tex_path));
                         }
@@ -222,14 +222,14 @@ class SelectAllOfTag : ScriptableWizard
                 }
 
 
-                //ÌáÈ¡²ÄÖÊ
+                //æå–æè´¨
                 AssetDatabase.RemoveObjectFromAsset(mat);
                 AssetDatabase.CreateAsset(mat, folder_name + "/Material/" + mat.name + ".mat");
 
-                //Ë¢ĞÂ×ÊÔ´£¬½«ËùÓĞÌáÈ¡³öÀ´µÄÍ¼Æ¬ÔØÈëAssets
+                //åˆ·æ–°èµ„æºï¼Œå°†æ‰€æœ‰æå–å‡ºæ¥çš„å›¾ç‰‡è½½å…¥Assets
                 AssetDatabase.Refresh();
 
-                //½«Í¼Æ¬¸½¼Ó½ø²ÄÖÊ
+                //å°†å›¾ç‰‡é™„åŠ è¿›æè´¨
                 for (int i = 0; i < p_name_list.Count; i++)
                 {
                     Debug.Log(p_name_list[i]);
@@ -241,7 +241,7 @@ class SelectAllOfTag : ScriptableWizard
 
         foreach (Animator anim in gameobj.transform.GetComponentsInChildren<Animator>())
         {
-            //ÌáÈ¡ËùÓĞAvatarÖÁÎÄ¼ş¼Ğ
+            //æå–æ‰€æœ‰Avatarè‡³æ–‡ä»¶å¤¹
             Avatar av = anim.avatar;
 
             string av_parent = folder_name + "/Avatar";
@@ -258,7 +258,7 @@ class SelectAllOfTag : ScriptableWizard
             AssetDatabase.CreateAsset(av, folder_name + "/Avatar/" + av.name + ".asset");
         }
 
-        //ÌáÈ¡Ô¤ÖÆÌå
+        //æå–é¢„åˆ¶ä½“
         PrefabUtility.SaveAsPrefabAsset(gameobj, folder_name + "/" + gameobj.name + ".prefab");
     }
 }

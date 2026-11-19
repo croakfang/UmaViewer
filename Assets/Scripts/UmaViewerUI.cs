@@ -416,6 +416,10 @@ public class UmaViewerUI : MonoBehaviour
             container.Slider.minValue = 0;
             container.Slider.onValueChanged.AddListener((a) =>
             {
+                //修改(Mini角色面部/耳朵动作) manual selection takes over from the facial motion, like normal characters
+                var uma = Builder.CurrentUMAContainer;
+                if (uma && uma.IsMini) uma.isAnimatorControl = false;
+
                 var val = Convert.ToInt32(a);
                 if (type == 0)
                 {

@@ -1,4 +1,4 @@
-using UnityEngine;
+ï»¿using UnityEngine;
 using UnityEditor;
 using System.Collections;
 using System.Collections.Generic;
@@ -71,23 +71,23 @@ public class GlobalValue : EditorWindow
         scrollPosition = GUILayout.BeginScrollView(scrollPosition, true, true);
         GUILayout.Label("Set Your Global Value!", EditorStyles.boldLabel);
         //Vector
-        _Global_FogMinDistance = EditorGUILayout.Vector4Field("ÎíÆø³öÏÖ¾àÀë", _Global_FogMinDistance);
-        _Global_FogLength = EditorGUILayout.Vector4Field("ÎíÆø³¤¶È", _Global_FogLength);
+        _Global_FogMinDistance = EditorGUILayout.Vector4Field("é›¾æ°”å‡ºç°è·ç¦»", _Global_FogMinDistance);
+        _Global_FogLength = EditorGUILayout.Vector4Field("é›¾æ°”é•¿åº¦", _Global_FogLength);
         //Float
-        _Global_MaxDensity = EditorGUILayout.Slider("×îµÍÄÜ¼û¶È", _Global_MaxDensity, 0, 1);
-        _Global_MaxHeight = EditorGUILayout.Slider("×î¸ß¿É¼û¸ß¶È", _Global_MaxHeight, 0, 10);
+        _Global_MaxDensity = EditorGUILayout.Slider("æœ€ä½èƒ½è§åº¦", _Global_MaxDensity, 0, 1);
+        _Global_MaxHeight = EditorGUILayout.Slider("æœ€é«˜å¯è§é«˜åº¦", _Global_MaxHeight, 0, 10);
         _GlobalOutlineOffset = EditorGUILayout.Slider("_GlobalOutlineOffset", _GlobalOutlineOffset, -100, 100);
-        _GlobalOutlineWidth = EditorGUILayout.Slider("È«¾ÖÂÖÀªÏß¿í¶È", _GlobalOutlineWidth, 0, 100);
+        _GlobalOutlineWidth = EditorGUILayout.Slider("å…¨å±€è½®å»“çº¿å®½åº¦", _GlobalOutlineWidth, 0, 100);
         _GlobalCameraFov = EditorGUILayout.Slider("_GlobalCameraFov", _GlobalCameraFov, 0, 100);
         _CylinderBlend = EditorGUILayout.Slider("_CylinderBlend", _CylinderBlend, 0, 100);
         _RimHorizonOffset = EditorGUILayout.Slider("_RimHorizonOffset", _RimHorizonOffset, 0, 1);
         _UVEmissivePower = EditorGUILayout.Slider("_UVEmissivePower", _UVEmissivePower, 0, 10);
         //Color
-        _GlobalToonColor = EditorGUILayout.ColorField("ÒõÓ°ÑÕÉ«", _GlobalToonColor);
+        _GlobalToonColor = EditorGUILayout.ColorField("é˜´å½±é¢œè‰²", _GlobalToonColor);
         _Global_FogColor = EditorGUILayout.ColorField("_Global_FogColor", _Global_FogColor);
         _GlobalDirtRimSpecularColor = EditorGUILayout.ColorField("_GlobalDirtRimSpecularColor", _GlobalDirtRimSpecularColor);
         _GlobalDirtToonColor = EditorGUILayout.ColorField("_GlobalDirtToonColor", _GlobalDirtToonColor);
-        _GlobalRimColor = EditorGUILayout.ColorField("±ßÔµ¹âÑÕÉ«", _GlobalRimColor);
+        _GlobalRimColor = EditorGUILayout.ColorField("è¾¹ç¼˜å…‰é¢œè‰²", _GlobalRimColor);
         _GlobalDirtColor = EditorGUILayout.ColorField("_GlobalDirtColor", _GlobalDirtColor);
         _Global_LightmapColor = EditorGUILayout.ColorField("_Global_LightmapColor", _Global_LightmapColor);
         _Global_LightmapDensityAddColor = EditorGUILayout.ColorField("_Global_LightmapDensityAddColor", _Global_LightmapDensityAddColor);
@@ -96,15 +96,15 @@ public class GlobalValue : EditorWindow
 
         _AmbientColor = EditorGUILayout.ColorField("_AmbientColor", _AmbientColor);
         //Vector Array
-        _MainParam_0 = EditorGUILayout.Vector4Field("×óÑÛÆ«ÒÆ", _MainParam_0);
-        _MainParam_1 = EditorGUILayout.Vector4Field("ÓÒÑÛÆ«ÒÆ", _MainParam_1);
+        _MainParam_0 = EditorGUILayout.Vector4Field("å·¦çœ¼åç§»", _MainParam_0);
+        _MainParam_1 = EditorGUILayout.Vector4Field("å³çœ¼åç§»", _MainParam_1);
 
-        _HighParam1_0 = EditorGUILayout.Vector4Field("×óÑÛÉÏ¸ß¹â£¨wÖµÎªÇ¿¶È£©", _HighParam1_0);
-        _HighParam1_1 = EditorGUILayout.Vector4Field("×óÑÛÏÂ¸ß¹â", _HighParam1_1);
-        _HighParam1_2 = EditorGUILayout.Vector4Field("Ë«ÑÛÉÁË¸Ğ§¹û", _HighParam1_2);
+        _HighParam1_0 = EditorGUILayout.Vector4Field("å·¦çœ¼ä¸Šé«˜å…‰ï¼ˆwå€¼ä¸ºå¼ºåº¦ï¼‰", _HighParam1_0);
+        _HighParam1_1 = EditorGUILayout.Vector4Field("å·¦çœ¼ä¸‹é«˜å…‰", _HighParam1_1);
+        _HighParam1_2 = EditorGUILayout.Vector4Field("åŒçœ¼é—ªçƒæ•ˆæœ", _HighParam1_2);
 
-        _HighParam2_0 = EditorGUILayout.Vector4Field("ÓÒÑÛÉÏ¸ß¹â", _HighParam2_0);
-        _HighParam2_1 = EditorGUILayout.Vector4Field("ÓÒÑÛÏÂ¸ß¹â", _HighParam2_1);
+        _HighParam2_0 = EditorGUILayout.Vector4Field("å³çœ¼ä¸Šé«˜å…‰", _HighParam2_0);
+        _HighParam2_1 = EditorGUILayout.Vector4Field("å³çœ¼ä¸‹é«˜å…‰", _HighParam2_1);
 
         _ColorArray_0 = EditorGUILayout.ColorField("_ColorArray_0", _ColorArray_0);
         _ColorArray_1 = EditorGUILayout.ColorField("_ColorArray_1", _ColorArray_1);

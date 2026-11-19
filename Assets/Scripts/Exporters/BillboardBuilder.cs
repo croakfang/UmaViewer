@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
@@ -7,7 +7,7 @@ public class BillboardBuilder : MonoBehaviour
     
 
 
-    //ÐÞ¸Ä(BillboardµÄµ¼³öÏà¹Ø)
+    //ä¿®æ”¹(Billboardçš„å¯¼å‡ºç›¸å…³)
     public static Mesh CreateSphereMesh(float radius, int subdiv, float uvRadius, Vector2 uvCenter)
     {
         var t = (1f + Mathf.Sqrt(5f)) / 2f;
@@ -150,7 +150,7 @@ public class BillboardBuilder : MonoBehaviour
 
 
 
-                    //ÐÞ¸Ä(BillboardµÄµ¼³öÏà¹Ø)
+                    //ä¿®æ”¹(Billboardçš„å¯¼å‡ºç›¸å…³)
                     if (radius < 0.003)
                     {
                         sphereMesh = CreateSphereMesh(radius, 1, uv_radius, uv_center);
@@ -205,7 +205,7 @@ public class BillboardBuilder : MonoBehaviour
 
 
 
-                //ÐÞ¸Ä(BillboardµÄµ¼³öÏà¹Ø)
+                //ä¿®æ”¹(Billboardçš„å¯¼å‡ºç›¸å…³)
                 //ApplyBillboardUVOffset(s);
 
 
@@ -230,7 +230,7 @@ public class BillboardBuilder : MonoBehaviour
 
 
 
-    //ÐÞ¸Ä(BillboardµÄµ¼³öÏà¹Ø)
+    //ä¿®æ”¹(Billboardçš„å¯¼å‡ºç›¸å…³)
     private static void ApplyBillboardUVOffset(SkinnedMeshRenderer smr)
     {
         var mesh = smr.sharedMesh;

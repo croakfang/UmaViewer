@@ -76,6 +76,36 @@ public class UmaContainerCharacter : UmaContainer
     public bool IsMini = false;
     public TextureList MiniHeadTextures = new TextureList();
 
+    //修改(Mini角色面部/耳朵动作)
+    [Header("Mini Facial")]
+    public Transform MiniFacialLocator;
+    public bool MiniFacialMirror = false;
+    private Material _miniEyeMat, _miniMouthMat, _miniMayuLMat, _miniMayuRMat;
+    private GameObject _miniCheekObj;
+    private Material _miniCheekMat;
+    private Texture _miniCheekTex0, _miniCheekTex1, _miniCheekDefaultTex;
+    private bool _miniCheekDefaultActive;
+    private Transform _miniEyeLCtrl, _miniEyeRCtrl, _miniMouthCtrl, _miniMayuLCtrl, _miniMayuRCtrl, _miniCheekCtrl;
+    private readonly List<MiniEarBone> _miniEarBones = new List<MiniEarBone>();
+    private readonly List<MiniEarMorph> _miniEarMorphs = new List<MiniEarMorph>();
+
+    private class MiniEarBone
+    {
+        public Transform Bone;
+        public bool IsLeft;
+        public Vector3 BasePosition;
+        public Vector3 BaseScale;
+        public Vector3 BaseRotation; //Maya euler
+        public Vector3 Position, Scale, Rotation; //accumulators
+    }
+
+    private class MiniEarMorph
+    {
+        public Transform LocatorL, LocatorR;
+        public List<(MiniEarBone bone, TrsArray trs)> TargetsL = new List<(MiniEarBone, TrsArray)>();
+        public List<(MiniEarBone bone, TrsArray trs)> TargetsR = new List<(MiniEarBone, TrsArray)>();
+    }
+
     [Header("Mob")]
     public bool IsMob = false;
     public DataRow MobDressColor;
@@ -502,6 +532,25 @@ public class UmaContainerCharacter : UmaContainer
         };
     }
 
+    private SkirtParamDataAsset _skirtParam;
+
+    public void LoadSkirtParam(UmaDatabaseEntry entry)
+    {
+        if (entry == null) return;
+        if (Config.Instance != null && !Config.Instance.UseDynamicSkirtContacts) return;
+        try
+        {
+            var param = entry.Get<SkirtParamDataAsset>();
+            if (!param) return;
+            if (!LoadedAssets.Contains(entry)) LoadedAssets.Add(entry);
+            _skirtParam = param;
+        }
+        catch (Exception e)
+        {
+            Debug.LogWarning($"Skirt param load failed: {entry.Name}\n{e}");
+        }
+    }
+
     public void LoadPhysics()
     {
         cySpringDataContainers = new List<CySpringDataContainer>(PhysicsContainer.GetComponentsInChildren<CySpringDataContainer>());
@@ -523,6 +572,9 @@ public class UmaContainerCharacter : UmaContainer
         {
             cySpringDataContainers[i].InitializePhysics(bones, colliders);
         }
+        if (_skirtParam)
+            _skirtParam.BindDynamicSkirt(bones, colliders, cySpringDataContainers, CharaEntry != null ? CharaEntry.Id : 0,
+                Config.Instance != null && Config.Instance.UseSkirtSurfacePush && Body ? Body.GetComponentInChildren<SkinnedMeshRenderer>() : null);
     }
 
     public void SetDynamicBoneEnable(bool isOn)
@@ -628,6 +680,18 @@ public class UmaContainerCharacter : UmaContainer
         if(BodyShaderEffectData != null)
         {
             BodyShaderEffectData.updateUV(Time.fixedDeltaTime);
+        }
+    }
+
+    //修改(Mini角色面部/耳朵动作)
+    //Animator evaluates before LateUpdate, so locator values read here belong to the current frame,
+    //and ear bones written here won't be overwritten by the body animator.
+    private void LateUpdate()
+    {
+        if (!IsMini || !MiniFacialLocator) return;
+        if (isAnimatorControl)
+        {
+            ApplyMiniFacialFromLocator();
         }
     }
 
@@ -915,6 +979,9 @@ public class UmaContainerCharacter : UmaContainer
                     {
                         m.shader = UmaAssetManager.BodyAlphaShader;
                     }
+
+                    //修改(Billboard的shader判断) M_Body_Billboard
+                    TryApplyBillboardShader(r, m);
                 }
             }
         }
@@ -928,6 +995,43 @@ public class UmaContainerCharacter : UmaContainer
                 BodyShaderEffectData.Initialize();
             }
         }
+    }
+
+    //修改(Billboard的shader判断)
+    //The game's billboard material (e.g. mtl_chr1089_30_Billboard) references the TSERB shader itself,
+    //but some billboard meshes reuse a copy of the normal hair material (e.g. "mtl_chr1153_01_hair 1" on M_Hair_Billboard),
+    //which still points at ToonHair/TSER. So also decide by the renderer / mesh name.
+    private const string BillboardShaderName = "Gallop/3D/Chara/NolineToon/TSERB";
+    private static Shader _billboardShader;
+
+    private static bool ContainsBillboard(string name)
+    {
+        return !string.IsNullOrEmpty(name) && name.IndexOf("Billboard", StringComparison.OrdinalIgnoreCase) >= 0;
+    }
+
+    private bool TryApplyBillboardShader(Renderer r, Material m)
+    {
+        if (!r || !m) return false;
+
+        Mesh mesh = null;
+        if (r is SkinnedMeshRenderer smr) mesh = smr.sharedMesh;
+        else if (r.TryGetComponent<MeshFilter>(out var mf)) mesh = mf.sharedMesh;
+
+        bool isBillboard = ContainsBillboard(r.name) || (mesh && ContainsBillboard(mesh.name)) || ContainsBillboard(m.name);
+        if (!isBillboard) return false;
+        if (m.shader && m.shader.name == BillboardShaderName) return true;
+
+        if (!_billboardShader)
+        {
+            _billboardShader = Builder.ShaderList.Find(s => s && s.name == BillboardShaderName);
+        }
+        if (!_billboardShader)
+        {
+            Debug.LogWarning($"{BillboardShaderName} not found, keep {m.shader?.name} for {r.name}");
+            return false;
+        }
+        m.shader = _billboardShader;
+        return true;
     }
 
     public void LoadHead(UmaDatabaseEntry entry)
@@ -1045,8 +1149,13 @@ public class UmaContainerCharacter : UmaContainer
                         }
                     }
 
+                    //修改(Billboard的shader判断)
+                    TryApplyBillboardShader(r, m);
+
                     switch (m.shader.name)
                     {
+                        case BillboardShaderName: //修改(Billboard的shader判断) keep TSERB, don't swap to HairShader
+                            break;
                         case "Gallop/3D/Chara/MultiplyCheek":
                             m.shader = UmaAssetManager.CheekShader; ;
                             break;
@@ -1125,8 +1234,13 @@ public class UmaContainerCharacter : UmaContainer
                     }
                 }
 
+                //修改(Billboard的shader判断)
+                TryApplyBillboardShader(r, m);
+
                 switch (m.shader.name)
                 {
+                    case BillboardShaderName: //修改(Billboard的shader判断) keep TSERB, don't swap to HairShader
+                        break;
                     case "Gallop/3D/Chara/ToonHair/TSER":
                         m.shader = UmaAssetManager.HairShader;
                         m.SetFloat("_CylinderBlend", 0.25f);
@@ -1400,11 +1514,12 @@ public class UmaContainerCharacter : UmaContainer
 
     private void LoadAnimation(AnimationClip clip)
     {
-        if (clip.name.EndsWith("_s"))
+        //修改(Mini角色面部/耳朵动作) mini "_mirror" motions: "xxx_s_mirror" / "xxx_e_mirror" are start/end clips too
+        if (clip.name.EndsWith("_s") || clip.name.EndsWith("_s_mirror"))
         {
             OverrideController["clip_s"] = clip;
         }
-        else if (clip.name.EndsWith("_e"))
+        else if (clip.name.EndsWith("_e") || clip.name.EndsWith("_e_mirror"))
         {
             OverrideController["clip_e"] = clip;
         }
@@ -1417,7 +1532,8 @@ public class UmaContainerCharacter : UmaContainer
         }
         else if (clip.name.EndsWith("_face"))
         {
-            if (IsMini) return;
+            //修改(Mini角色面部/耳朵动作)
+            if (IsMini && !MiniFacialLocator) return;
             LoadFaceAnimation(clip);
         }
         else if (clip.name.EndsWith("_face_additive"))
@@ -1427,7 +1543,8 @@ public class UmaContainerCharacter : UmaContainer
         }
         else if (clip.name.Contains("_ear"))
         {
-            if (IsMini) return;
+            //修改(Mini角色面部/耳朵动作)
+            if (IsMini && !MiniFacialLocator) return;
             LoadEarAnimation(clip);
         }
         else if (clip.name.EndsWith("_pos"))
@@ -1448,13 +1565,19 @@ public class UmaContainerCharacter : UmaContainer
                 FaceDrivenKeyTarget.ResetLocator();
                 isAnimatorControl = false;
             }
+            //修改(Mini角色面部/耳朵动作)
+            else if (IsMini)
+            {
+                ResetMiniFacial();
+                MiniFacialMirror = clip.name.EndsWith("_mirror");
+            }
 
-            if (Main.AbList.TryGetValue($"{clip.name.Replace("/body", "/facial")}_face", out UmaDatabaseEntry entry))
+            if (TryGetFacialEntry(clip, "_face", out UmaDatabaseEntry entry))
             {
                 LoadAnimation(entry);
             }
 
-            if (Main.AbList.TryGetValue($"{clip.name.Replace("/body", "/facial")}_ear", out entry))
+            if (TryGetFacialEntry(clip, "_ear", out entry))
             {
                 LoadAnimation(entry);
             }
@@ -1489,6 +1612,12 @@ public class UmaContainerCharacter : UmaContainer
                 FaceDrivenKeyTarget.ResetLocator();
                 isAnimatorControl = false;
             }
+            //修改(Mini角色面部/耳朵动作)
+            else if (IsMini)
+            {
+                ResetMiniFacial();
+                MiniFacialMirror = clip.name.EndsWith("_mirror");
+            }
             UpBodyReset();
             var pos_weight = UmaAnimator.GetLayerWeight(2);
             UmaAnimator.Rebind();
@@ -1496,7 +1625,7 @@ public class UmaContainerCharacter : UmaContainer
             OverrideController["clip_2"] = clip;
             // If Cut-in, play immediately without state interpolation
 
-            if (Main.AbList.TryGetValue($"{clip.name.Replace("/body", "/facial")}_face", out UmaDatabaseEntry facialMotion))
+            if (TryGetFacialEntry(clip, "_face", out UmaDatabaseEntry facialMotion))
             {
                 LoadAnimation(facialMotion);
             }
@@ -1516,7 +1645,7 @@ public class UmaContainerCharacter : UmaContainer
                 FacialAdditiveController.StartPlay(null);
             }
 
-            if (Main.AbList.TryGetValue($"{clip.name.Replace("/body", "/facial")}_ear", out UmaDatabaseEntry earMotion))
+            if (TryGetFacialEntry(clip, "_ear", out UmaDatabaseEntry earMotion))
             {
                 LoadAnimation(earMotion);
             }
@@ -1616,7 +1745,7 @@ public class UmaContainerCharacter : UmaContainer
         else if (clip.name.Contains("_loop"))
         {
             isAnimatorControl = true;
-            FaceDrivenKeyTarget.ResetLocator();
+            ResetFacialLocator(); //修改(Mini角色面部/耳朵动作)
             UmaDatabaseEntry motion_e = null;
             UmaDatabaseEntry motion_s = null;
             if (Main.AbList.TryGetValue(clip.name.Replace("_loop", "_s"), out motion_s))
@@ -1643,7 +1772,7 @@ public class UmaContainerCharacter : UmaContainer
         else
         {
             isAnimatorControl = true;
-            FaceDrivenKeyTarget.ResetLocator();
+            ResetFacialLocator(); //修改(Mini角色面部/耳朵动作)
             FaceOverrideController["clip_2"] = clip;
             UmaFaceAnimator.Play("motion_2", 0, 0);
         }
@@ -1683,17 +1812,326 @@ public class UmaContainerCharacter : UmaContainer
             FaceOverrideController["clip_2_ear"] = clip;
             UmaFaceAnimator.Play("motion_1", 1, 0);
             UmaFaceAnimator.SetTrigger((motion_s != null && motion_e != null) ? "next_e_ear" : ((motion_s != null) ? "next_s_ear" : "next_ear"));
+            //修改(Mini角色面部/耳朵动作) ear-only motions still need the locator to be read
+            if (IsMini) isAnimatorControl = true;
         }
         else
         {
             if (FaceOverrideController["clip_2"].name == "clip_2")
             {
                 isAnimatorControl = true;
-                FaceDrivenKeyTarget.ResetLocator();
+                ResetFacialLocator(); //修改(Mini角色面部/耳朵动作)
             }
             FaceOverrideController["clip_2_ear"] = clip;
             UmaFaceAnimator.Play("motion_2", 1, 0);
+            if (IsMini) isAnimatorControl = true;
         }
+    }
+
+    //修改(Mini角色面部/耳朵动作)
+    private void ResetFacialLocator()
+    {
+        if (FaceDrivenKeyTarget)
+        {
+            FaceDrivenKeyTarget.ResetLocator();
+        }
+        else if (IsMini && UmaFaceAnimator)
+        {
+            UmaFaceAnimator.Rebind();
+        }
+    }
+
+    //修改(Mini角色面部/耳朵动作)
+    //Looks up the facial(_face/_ear) motion that belongs to a body motion.
+    //Mini "_mirror" body motions have no own facial motion, so fall back to the non-mirrored one (L/R swapped when applied).
+    private bool TryGetFacialEntry(AnimationClip bodyClip, string suffix, out UmaDatabaseEntry entry)
+    {
+        var facialPath = bodyClip.name.Replace("/body", "/facial");
+        if (Main.AbList.TryGetValue($"{facialPath}{suffix}", out entry))
+        {
+            return true;
+        }
+        if (IsMini && facialPath.EndsWith("_mirror"))
+        {
+            return Main.AbList.TryGetValue($"{facialPath.Substring(0, facialPath.Length - "_mirror".Length)}{suffix}", out entry);
+        }
+        return false;
+    }
+
+    //修改(Mini角色面部/耳朵动作)
+    //Mini facial motions animate the transforms of "3d/animator/pfb_mini_facial_locator" (Eye_L_Ctrl, Mouth_Ctrl, ...),
+    //where -localPosition.x * 100 is the UV cell index of each part.
+    //Mini ear motions animate the same "Ear_X_Ctrl/Ear_X__Type" locators as normal characters (from "3d/animator/drivenkeylocator"),
+    //and drive the Ear_01~03 bones through the hair's "ear_target" (positions scaled by "ear_target_scale").
+    public void SetupMiniFacial()
+    {
+        if (!IsMini) return;
+
+        var renderers = GetComponentsInChildren<Renderer>(true);
+        Material FindMat(string rendererName)
+        {
+            var r = renderers.FirstOrDefault(a => a.gameObject.name.Equals(rendererName));
+            return r ? r.material : null;
+        }
+        _miniEyeMat = FindMat("M_Eye");
+        _miniMouthMat = FindMat("M_Mouth");
+        _miniMayuLMat = FindMat("M_Mayu_L");
+        _miniMayuRMat = FindMat("M_Mayu_R");
+
+        var cheekRenderer = renderers.FirstOrDefault(a => a.gameObject.name.Equals("M_Cheek"));
+        if (cheekRenderer)
+        {
+            _miniCheekObj = cheekRenderer.gameObject;
+            _miniCheekMat = cheekRenderer.material;
+            _miniCheekDefaultTex = _miniCheekMat.mainTexture;
+            _miniCheekDefaultActive = _miniCheekObj.activeSelf;
+            _miniCheekTex0 = MiniHeadTextures.LoadLast(t => t.name.EndsWith("cheek0"));
+            _miniCheekTex1 = MiniHeadTextures.LoadLast(t => t.name.EndsWith("cheek1"));
+        }
+
+        //Locator (face part)
+        if (!Main.AbList.TryGetValue("3d/animator/pfb_mini_facial_locator", out var miniLocatorEntry))
+        {
+            Debug.LogWarning("pfb_mini_facial_locator not found, mini facial motion disabled");
+            return;
+        }
+        LoadedAssets.Add(miniLocatorEntry);
+        var miniLocatorBundle = UmaAssetManager.LoadAssetBundle(miniLocatorEntry);
+        var locator = Instantiate(miniLocatorBundle.LoadAsset("pfb_mini_facial_locator"), transform) as GameObject;
+        if (!locator) return;
+        locator.name = "MiniFacialLocator";
+
+        //Locator (ear part), borrowed from the normal DrivenKeyLocator so the ear clip paths match
+        if (Main.AbList.TryGetValue("3d/animator/drivenkeylocator", out var dklEntry))
+        {
+            LoadedAssets.Add(dklEntry);
+            var dklBundle = UmaAssetManager.LoadAssetBundle(dklEntry);
+            var dkl = Instantiate(dklBundle.LoadAsset("DrivenKeyLocator")) as GameObject;
+            if (dkl)
+            {
+                foreach (var earRoot in new[] { "Ear_L_Ctrl", "Ear_R_Ctrl" })
+                {
+                    var t = dkl.transform.Find(earRoot);
+                    if (t && !locator.transform.Find(earRoot))
+                    {
+                        t.SetParent(locator.transform, false);
+                    }
+                }
+                Destroy(dkl);
+            }
+        }
+
+        MiniFacialLocator = locator.transform;
+        _miniEyeLCtrl = MiniFacialLocator.Find("Eye_L_Ctrl");
+        _miniEyeRCtrl = MiniFacialLocator.Find("Eye_R_Ctrl");
+        _miniMouthCtrl = MiniFacialLocator.Find("Mouth_Ctrl");
+        _miniMayuLCtrl = MiniFacialLocator.Find("Mayu_L_Ctrl");
+        _miniMayuRCtrl = MiniFacialLocator.Find("Mayu_R_Ctrl");
+        _miniCheekCtrl = MiniFacialLocator.Find("Cheek_Ctrl");
+
+        SetupMiniEar();
+
+        var animator = locator.GetComponent<Animator>();
+        if (!animator) animator = locator.AddComponent<Animator>();
+        animator.cullingMode = AnimatorCullingMode.AlwaysAnimate;
+        animator.avatar = AvatarBuilder.BuildGenericAvatar(locator, "");
+        UmaFaceAnimator = animator;
+        FaceOverrideController = Instantiate(Builder.FaceOverrideController);
+        UmaFaceAnimator.runtimeAnimatorController = FaceOverrideController;
+    }
+
+    private void SetupMiniEar()
+    {
+        _miniEarBones.Clear();
+        _miniEarMorphs.Clear();
+        if (!Hair || !MiniFacialLocator) return;
+
+        var holder = Hair.GetComponent<AssetHolder>();
+        if (!holder) return;
+        var earTarget = holder._assetTable["ear_target"] as DrivenKeyTarget;
+        if (!earTarget || earTarget._targetFaces == null || earTarget._targetFaces.Count == 0) return;
+        float earScale = holder._assetTableValue["ear_target_scale"];
+        if (earScale <= 0) earScale = 1;
+
+        var bones = new Dictionary<string, Transform>();
+        foreach (var t in GetComponentsInChildren<Transform>(true))
+        {
+            if (!bones.ContainsKey(t.name)) bones.Add(t.name, t);
+        }
+
+        //index 0 is the base pose of each ear bone
+        var boneMap = new Dictionary<string, MiniEarBone>();
+        foreach (var group in earTarget._targetFaces[0]._faceGroupInfo)
+        {
+            foreach (var trs in group._trsArray)
+            {
+                if (boneMap.ContainsKey(trs._path) || !bones.TryGetValue(trs._path, out var bone)) continue;
+                var earBone = new MiniEarBone
+                {
+                    Bone = bone,
+                    IsLeft = trs._path.EndsWith("_L"),
+                    BasePosition = bone.localPosition,
+                    BaseScale = bone.localScale,
+                    BaseRotation = trs._rotation
+                };
+                boneMap.Add(trs._path, earBone);
+                _miniEarBones.Add(earBone);
+            }
+        }
+
+        for (int i = 1; i < earTarget._targetFaces.Count; i++)
+        {
+            var tag = Enum.GetName(typeof(EarType), i);
+            if (tag == null) continue;
+            var morph = new MiniEarMorph
+            {
+                LocatorL = MiniFacialLocator.Find($"Ear_L_Ctrl/Ear_L__{tag}"),
+                LocatorR = MiniFacialLocator.Find($"Ear_R_Ctrl/Ear_R__{tag}")
+            };
+            foreach (var group in earTarget._targetFaces[i]._faceGroupInfo)
+            {
+                foreach (var trs in group._trsArray)
+                {
+                    if (!boneMap.TryGetValue(trs._path, out var earBone)) continue;
+                    var scaled = new TrsArray
+                    {
+                        _path = trs._path,
+                        _position = trs._position * earScale,
+                        _rotation = trs._rotation,
+                        _scale = trs._scale
+                    };
+                    (earBone.IsLeft ? morph.TargetsL : morph.TargetsR).Add((earBone, scaled));
+                }
+            }
+            if ((morph.LocatorL || morph.LocatorR) && (morph.TargetsL.Count > 0 || morph.TargetsR.Count > 0))
+            {
+                _miniEarMorphs.Add(morph);
+            }
+        }
+    }
+
+    private static int MiniLocatorIndex(Transform locator)
+    {
+        if (!locator) return 0;
+        return Mathf.Max(0, Mathf.RoundToInt(locator.localPosition.x * -100));
+    }
+
+    private void ApplyMiniFacialFromLocator()
+    {
+        var eyeL = MiniFacialMirror ? _miniEyeRCtrl : _miniEyeLCtrl;
+        var eyeR = MiniFacialMirror ? _miniEyeLCtrl : _miniEyeRCtrl;
+        var mayuL = MiniFacialMirror ? _miniMayuRCtrl : _miniMayuLCtrl;
+        var mayuR = MiniFacialMirror ? _miniMayuLCtrl : _miniMayuRCtrl;
+
+        SetMiniEye(MiniLocatorIndex(eyeL), MiniLocatorIndex(eyeR));
+        SetMiniMouth(MiniLocatorIndex(_miniMouthCtrl));
+        SetMiniMayu(_miniMayuLMat, MiniLocatorIndex(mayuL));
+        SetMiniMayu(_miniMayuRMat, MiniLocatorIndex(mayuR));
+
+        if (_miniCheekCtrl)
+        {
+            var p = _miniCheekCtrl.localPosition;
+            SetMiniCheek(Mathf.Abs(p.x) * 100, Mathf.Abs(p.z) * 100);
+        }
+
+        ApplyMiniEar(true);
+    }
+
+    //Same UV layout as the manual sliders in UmaViewerUI.LoadFacialPanelsMini
+    private void SetMiniEye(int left, int right)
+    {
+        if (!_miniEyeMat) return;
+        left = Mathf.Clamp(left, 0, 14);
+        right = Mathf.Clamp(right, 0, 14);
+        _miniEyeMat.SetVector("_UVOffset", new Vector4(0.25f * (right % 4), -0.125f * (right / 4), 0.25f * (left % 4), -0.125f * (left / 4)));
+    }
+
+    private void SetMiniMouth(int index)
+    {
+        if (!_miniMouthMat) return;
+        index = Mathf.Clamp(index, 0, 18);
+        _miniMouthMat.mainTextureOffset = new Vector2(0.25f * (index % 4), -0.125f * (index / 4));
+    }
+
+    private void SetMiniMayu(Material mat, int index)
+    {
+        if (!mat) return;
+        index = Mathf.Clamp(index, 0, 8);
+        mat.mainTextureOffset = new Vector2(0.25f * (index % 4), -0.25f * (index / 4));
+    }
+
+    //Cheek_Ctrl x -> cheek0 (blush), z -> cheek1 (strong blush)
+    private void SetMiniCheek(float weight0, float weight1)
+    {
+        if (!_miniCheekObj || !_miniCheekMat) return;
+        if (weight0 <= 0.01f && weight1 <= 0.01f)
+        {
+            if (_miniCheekObj.activeSelf) _miniCheekObj.SetActive(false);
+            return;
+        }
+        var tex = (weight1 > weight0 && _miniCheekTex1) ? _miniCheekTex1 : (_miniCheekTex0 ? _miniCheekTex0 : _miniCheekDefaultTex);
+        if (_miniCheekMat.mainTexture != tex) _miniCheekMat.mainTexture = tex;
+        if (!_miniCheekObj.activeSelf) _miniCheekObj.SetActive(true);
+    }
+
+    private void ApplyMiniEar(bool useLocator)
+    {
+        if (_miniEarBones.Count == 0) return;
+
+        foreach (var bone in _miniEarBones)
+        {
+            bone.Position = bone.BasePosition;
+            bone.Scale = bone.BaseScale;
+            bone.Rotation = bone.BaseRotation;
+        }
+
+        if (useLocator)
+        {
+            foreach (var morph in _miniEarMorphs)
+            {
+                var locL = MiniFacialMirror ? morph.LocatorR : morph.LocatorL;
+                var locR = MiniFacialMirror ? morph.LocatorL : morph.LocatorR;
+                AccumulateMiniEar(morph.TargetsL, locL ? locL.localPosition.x * -100 : 0);
+                AccumulateMiniEar(morph.TargetsR, locR ? locR.localPosition.x * -100 : 0);
+            }
+        }
+
+        foreach (var bone in _miniEarBones)
+        {
+            if (!bone.Bone) continue;
+            bone.Bone.localPosition = bone.Position;
+            bone.Bone.localScale = bone.Scale;
+            bone.Bone.localRotation = RotationConvert.fromMaya(bone.Rotation);
+        }
+    }
+
+    private static void AccumulateMiniEar(List<(MiniEarBone bone, TrsArray trs)> targets, float weight)
+    {
+        if (Mathf.Approximately(weight, 0)) return;
+        foreach (var (bone, trs) in targets)
+        {
+            bone.Position += trs._position * weight;
+            bone.Scale += trs._scale * weight;
+            bone.Rotation += trs._rotation * weight;
+        }
+    }
+
+    //Back to the default face (cell 0, original cheek, base ear pose) and stop reading the locator
+    public void ResetMiniFacial()
+    {
+        if (!IsMini || !MiniFacialLocator) return;
+        isAnimatorControl = false;
+        if (UmaFaceAnimator) UmaFaceAnimator.Rebind();
+        SetMiniEye(0, 0);
+        SetMiniMouth(0);
+        SetMiniMayu(_miniMayuLMat, 0);
+        SetMiniMayu(_miniMayuRMat, 0);
+        if (_miniCheekObj && _miniCheekMat)
+        {
+            _miniCheekMat.mainTexture = _miniCheekDefaultTex;
+            _miniCheekObj.SetActive(_miniCheekDefaultActive);
+        }
+        ApplyMiniEar(false);
     }
 
     public void SetNextAnimationCut(string cutName)

@@ -1,4 +1,4 @@
-using System;
+锘縰sing System;
 using System.Collections.Generic;
 using UnityEngine;
 using System.Linq;
@@ -618,7 +618,7 @@ namespace Gallop.Live.Cutt
 
 
 
-        //修改(Live演出的显隐控制和位置变换相关)
+        //淇敼(Live婕斿嚭鐨勬樉闅愭帶鍒跺拰浣嶇疆鍙樻崲鐩稿叧)
         public void LateUpdateFormationOffset_Transform(int targetIndex, LiveTimelineKeyIndex curKeyIndex, float time)
         {
             bool ControlMode = UmaViewerUI.Instance != null && UmaViewerUI.Instance.isControlMode;
@@ -1158,7 +1158,7 @@ namespace Gallop.Live.Cutt
             {
                 camera.cacheTransform.position = pos;
 
-                // TODO 这里用的还是CGSS的layer枚举，要进行替换
+                // TODO 杩欓噷鐢ㄧ殑杩樻槸CGSS鐨刲ayer鏋氫妇锛岃杩涜鏇挎崲
                 /*
                 int num = liveTimelineKeyCameraPositionData.GetCullingMask();
                 if (num == 0)
