@@ -65,7 +65,7 @@ namespace Gallop
                 {
                     foreach(var particle in dynamicbone.Particles)
                     {
-                        if (!particles.ContainsKey(particle.m_Transform.name)) 
+                        if (particle.m_Transform && !particles.ContainsKey(particle.m_Transform.name))
                             particles.Add(particle.m_Transform.name,particle);
                     }
                 }

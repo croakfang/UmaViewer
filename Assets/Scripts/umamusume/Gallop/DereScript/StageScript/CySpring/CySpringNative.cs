@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Runtime.InteropServices;
 using UnityEngine;
 
@@ -42,7 +42,7 @@ public struct CySpringNative
         }
         int num = clothWorkings.Length;
 
-        /* Native(dll)‚É‚æ‚é•¨—‰‰Z‚Í–³Œø‰»
+        /* Native(dll)ã«ã‚ˆã‚‹ç‰©ç†æ¼”ç®—ã¯ç„¡åŠ¹åŒ–
         if (isNative)
         {
             UpdateNativeClothInternal(clothWorkings, collisions, clothParam, parentCollisionWorldPosition, _collisionParentWorldRotation);

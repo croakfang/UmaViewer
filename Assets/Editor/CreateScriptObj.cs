@@ -1,4 +1,4 @@
-using System.Collections;
+ï»¿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using System.IO;
@@ -7,23 +7,23 @@ using UnityEditor;
 
 public class ScriptableObjectTest
 {
-    //AssetÎÄ¼ş±£´æÂ·¾¶
+    //Assetæ–‡ä»¶ä¿å­˜è·¯å¾„
     private const string assetPath = "Assets/Resources/Asset/";
 
     [MenuItem("MyTools/ScriptableObjectTest")]
     public static void CreateTestAsset()
     {
-        //´´½¨Êı¾İ
+        //åˆ›å»ºæ•°æ®
         TestData testData = ScriptableObject.CreateInstance<TestData>();
-        //¸³Öµ
+        //èµ‹å€¼
         testData.testName = "name";
         testData.level = 1;
 
-        //¼ì²é±£´æÂ·¾¶
+        //æ£€æŸ¥ä¿å­˜è·¯å¾„
         if (!Directory.Exists(assetPath))
             Directory.CreateDirectory(assetPath);
 
-        //É¾³ıÔ­ÓĞÎÄ¼ş£¬Éú³ÉĞÂÎÄ¼ş
+        //åˆ é™¤åŸæœ‰æ–‡ä»¶ï¼Œç”Ÿæˆæ–°æ–‡ä»¶
         string fullPath = assetPath + "/" + "TestData.asset";
         UnityEditor.AssetDatabase.DeleteAsset(fullPath);
         UnityEditor.AssetDatabase.CreateAsset(testData, fullPath);
@@ -31,9 +31,9 @@ public class ScriptableObjectTest
     }
 }
 
-//²âÊÔÊı¾İÀà
+//æµ‹è¯•æ•°æ®ç±»
 [CreateAssetMenu(fileName = "TestData", menuName = "Create ScriptableObject : TestData", order = 1)]
-//ÀàÃûÓëC#ÎÄ¼şÃûÒ»Ö±
+//ç±»åä¸C#æ–‡ä»¶åä¸€ç›´
 public class TestData : ScriptableObject
 {
     public string testName;

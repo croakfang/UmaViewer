@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -32,7 +32,7 @@ public class SliderControl : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     public void OnPointerDown(PointerEventData eventData)
     {
         is_Touched = true;
-        PauseButton.GetComponentInChildren<Text>().text = "¡ø";
+        PauseButton.GetComponentInChildren<Text>().text = "â–²";
         Debug.Log("Pause");
     }
 
@@ -40,7 +40,7 @@ public class SliderControl : MonoBehaviour, IPointerDownHandler, IPointerUpHandl
     {
         is_Touched = false;
         is_Outed = true;
-        PauseButton.GetComponentInChildren<Text>().text = "¡þ";
+        PauseButton.GetComponentInChildren<Text>().text = "ã€“";
         Debug.Log("Play");
     }
 

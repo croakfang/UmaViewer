@@ -105,6 +105,20 @@ public class UmaViewerBuilder : MonoBehaviour
         }
     }
 
+    // Prefer the outfit's own skirt parameters, then try the shared body asset.
+    private void TryLoadSkirtParam(UmaContainerCharacter umaContainer, string clothesDir, params string[] bodyNames)
+    {
+        foreach (var bodyName in bodyNames)
+        {
+            if (string.IsNullOrEmpty(bodyName)) continue;
+            if (Main.AbList.TryGetValue($"{clothesDir}ast_{bodyName}_skirt00", out var skirtEntry))
+            {
+                umaContainer.LoadSkirtParam(skirtEntry);
+                return;
+            }
+        }
+    }
+
     private void LoadNormalUma(UmaContainerCharacter umaContainer, CharaEntry chara, string costumeId, bool loadMotion = false, string haedCostumeId = "")
     {
         int id = chara.Id;
@@ -203,6 +217,7 @@ public class UmaViewerBuilder : MonoBehaviour
                 asset1 = Main.AbList[UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/clothes/pfb_bdy{costumeIdShort}_bust{bust}_cloth00"];
                 umaContainer.LoadPhysics(asset1);
             }
+            TryLoadSkirtParam(umaContainer, UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/clothes/", $"bdy{costumeId}", $"bdy{costumeIdShort}");
         }
         else
         {
@@ -219,6 +234,7 @@ public class UmaViewerBuilder : MonoBehaviour
             umaContainer.LoadPhysics(asset1);
             asset1 = Main.AbList[UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/clothes/pfb_bdy{id}_{costumeId}_bust_cloth00"];
             umaContainer.LoadPhysics(asset1);
+            TryLoadSkirtParam(umaContainer, UmaDatabaseController.BodyPath + $"bdy{id}_{costumeId}/clothes/", $"bdy{id}_{costumeId}");
         }
 
         // Record Head Data
@@ -486,6 +502,7 @@ public class UmaViewerBuilder : MonoBehaviour
                 asset1 = Main.AbList[UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/clothes/pfb_bdy{costumeIdShort}_bust{bust}_cloth00"];
                 umaContainer.LoadPhysics(asset1);
             }
+            TryLoadSkirtParam(umaContainer, UmaDatabaseController.BodyPath + $"bdy{costumeIdShort}/clothes/", $"bdy{costumeId}", $"bdy{costumeIdShort}");
         }
         else
         {
@@ -495,6 +512,7 @@ public class UmaViewerBuilder : MonoBehaviour
             umaContainer.LoadPhysics(asset1);
             asset1 = Main.AbList[UmaDatabaseController.BodyPath + $"bdy{bodyid}_{costumeId}/clothes/pfb_bdy{bodyid}_{costumeId}_bust_cloth00"];
             umaContainer.LoadPhysics(asset1);
+            TryLoadSkirtParam(umaContainer, UmaDatabaseController.BodyPath + $"bdy{bodyid}_{costumeId}/clothes/", $"bdy{bodyid}_{costumeId}");
         }
 
         // Record Head Data
@@ -742,6 +760,9 @@ public class UmaViewerBuilder : MonoBehaviour
         var eyebrowLmat = matList.FirstOrDefault(a => a.gameObject.name.Equals("M_Mayu_L"));
         var eyebrowRmat = matList.FirstOrDefault(a => a.gameObject.name.Equals("M_Mayu_R"));
         UI.LoadFacialPanelsMini(eyemat.material, eyebrowLmat.material, eyebrowRmat.material, mouthmat.material);
+
+        //修改(Mini角色面部/耳朵动作) facial/ear locator + animator, must be ready before the first LoadAnimation
+        umaContainer.SetupMiniFacial();
 
         umaContainer.Position = umaContainer.transform.Find("Position");
         umaContainer.SetupBoneHandles();

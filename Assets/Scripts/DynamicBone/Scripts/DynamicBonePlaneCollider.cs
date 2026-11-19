@@ -27,21 +27,15 @@ public class DynamicBonePlaneCollider : DynamicBoneColliderBase
         Plane plane = new Plane(normal, p);
         float d = plane.GetDistanceToPoint(particlePosition);
 
-        if (m_Bound == Bound.Outside)
+        if (m_Bound == Bound.Inside)
         {
-            if (d < 0)
-            {
-                particlePosition -= normal * d;
-                return true;
-            }
+            normal = -normal;
+            d = -d;
         }
-        else
+        if (d < particleRadius)
         {
-            if (d > 0)
-            {
-                particlePosition -= normal * d;
-                return true;
-            }
+            particlePosition += normal * (particleRadius - d);
+            return true;
         }
         return false;
     }

@@ -31,81 +31,49 @@ namespace Gallop
         public Dictionary<string, Transform> InitiallizeCollider(Dictionary<string, Transform> bones)
         {
             var colliders = new Dictionary<string, Transform>();
-            foreach (CySpringCollisionData collider in collisionParam)
+            foreach (var data in collisionParam)
             {
-                if (collider._isInner) continue;
-                if (bones.TryGetValue(collider._targetObjectName, out Transform bone))
-                {
+                if (data._type == CySpringCollisionData.CollisionType.None ||
+                    colliders.ContainsKey(data._collisionName) ||
+                    !bones.TryGetValue(data._targetObjectName, out var bone)) continue;
 
-                    var child = new GameObject(collider._collisionName);
-                    child.transform.SetParent(bone);
-                    child.transform.localPosition = Vector3.zero;
-                    child.transform.localRotation = Quaternion.identity;
-                    child.transform.localScale = Vector3.one;
-                    colliders.Add(child.name, child.transform);
+                var child = new GameObject(data._collisionName);
+                child.transform.SetParent(bone, false);
+                AddDynamicCollider(child, data);
 
-
-                    //修改(动骨与碰撞相关)
-                    //Tweak
-                    if (collider._collisionName == "Col_B_Hip_Tail")
-                    {
-                        collider._radius *= 1.01f;
-                    }
-                    else if (collider._collisionName == "Col_B_Chest_Tail")
-                    {
-                        collider._radius *= 1.11f;
-                    }
-                    else if (collider._collisionName.Contains("Col_B_Hip_Skirt"))
-                    {
-                        collider._radius *= 0.8f;
-                    }
-                    else if (collider._collisionName == "Col_Elbow_R_Hair" || collider._collisionName == "Col_Elbow_L_Hair")
-                    {
-                        collider._radius *= 0.3f;
-                    }
-                    else
-                    {
-                        collider._radius *= 0.9f;
-                    }
-
-
-                    switch (collider._type)
-                    {
-                        case CySpringCollisionData.CollisionType.Capsule:
-                            var dynamic = child.AddComponent<DynamicBoneCollider>();
-                            dynamic.ColliderName = collider._collisionName;
-                            child.transform.localPosition = (collider._offset + collider._offset2) / 2;
-                            child.transform.LookAt(child.transform.TransformPoint(collider._offset2));
-                            dynamic.m_Direction = DynamicBoneColliderBase.Direction.Z;
-                            dynamic.m_Height = (collider._offset - collider._offset2).magnitude + collider._radius;
-                            dynamic.m_Radius = collider._radius;
-                            dynamic.m_Bound = collider._isInner ? DynamicBoneColliderBase.Bound.Inside : DynamicBoneColliderBase.Bound.Outside;
-                            break;
-                        case CySpringCollisionData.CollisionType.Sphere:
-                            var Spheredynamic = child.AddComponent<DynamicBoneCollider>();
-                            Spheredynamic.ColliderName = collider._collisionName;
-                            child.transform.localPosition = collider._offset;
-                            Spheredynamic.m_Radius = collider._radius;
-                            Spheredynamic.m_Height = collider._distance;
-                            Spheredynamic.m_Bound = collider._isInner ? DynamicBoneColliderBase.Bound.Inside : DynamicBoneColliderBase.Bound.Outside;
-                            break;
-                        case CySpringCollisionData.CollisionType.Plane:
-                            var planedynamic = child.AddComponent<DynamicBonePlaneCollider>();
-                            planedynamic.ColliderName = collider._collisionName;
-                            child.transform.localPosition = collider._offset;
-                            planedynamic.m_Bound = collider._isInner ? DynamicBoneColliderBase.Bound.Inside : DynamicBoneColliderBase.Bound.Outside;
-                            break;
-                        case CySpringCollisionData.CollisionType.None:
-                            break;
-                    }
-                }
+                colliders.Add(child.name, child.transform);
             }
             return colliders;
         }
 
+        private static void AddDynamicCollider(GameObject child, CySpringCollisionData data)
+        {
+            DynamicBoneColliderBase shape;
+            child.transform.localPosition = data._offset;
+            if (data._type == CySpringCollisionData.CollisionType.Plane)
+            {
+                shape = child.AddComponent<DynamicBonePlaneCollider>();
+                if (data._normal.sqrMagnitude > 0)
+                    child.transform.localRotation = Quaternion.FromToRotation(Vector3.up, data._normal);
+            }
+            else
+            {
+                var round = child.AddComponent<DynamicBoneCollider>();
+                round.m_Radius = data._radius;
+                if (data._type == CySpringCollisionData.CollisionType.Capsule)
+                {
+                    var axis = data._offset2 - data._offset;
+                    child.transform.localPosition += axis * 0.5f;
+                    if (axis.sqrMagnitude > 0)
+                        child.transform.localRotation = Quaternion.FromToRotation(Vector3.up, axis);
+                    round.m_Height = axis.magnitude + 2f * round.m_Radius;
+                }
+                shape = round;
+            }
+            shape.ColliderName = data._collisionName;
+            shape.m_Bound = data._isInner ? DynamicBoneColliderBase.Bound.Inside : DynamicBoneColliderBase.Bound.Outside;
+        }
 
-        //修改(动骨与碰撞相关)
-        //Tweak
         public void InitializePhysics(Dictionary<string, Transform> bones, Dictionary<string, Transform> colliders)
         {
             DynamicBones.Clear();
@@ -124,6 +92,8 @@ namespace Gallop
 
                 var dynamic = bone.gameObject.AddComponent<DynamicBone>();
                 dynamic.m_Root = bone;
+                dynamic.m_UpdateMode = DynamicBone.UpdateMode.Normal;
+                dynamic.m_EndLength = spring._needSimulateEndBone ? 1f : 0f;
 
                 dynamic.m_LimitAngel_Min = spring._limitAngleMin;
                 dynamic.m_LimitAngel_Max = spring._limitAngleMax;
@@ -134,7 +104,6 @@ namespace Gallop
                     dynamic.m_Elasticity = 0.2f;
                     dynamic.m_Stiffness = 0.1f;
                     dynamic.m_Inert = 0.5f;
-                    dynamic.m_Radius = 0.02f;
 
                     dynamic.m_Gravity = Vector3.zero;
                     dynamic.m_Force = Vector3.zero;
@@ -142,7 +111,7 @@ namespace Gallop
                     dynamic.m_DampingDistrib = null;
                     dynamic.m_ElasticityDistrib = new AnimationCurve(
                         new Keyframe(0f, 1.6f),
-                        new Keyframe(0f, 1.5f),
+                        new Keyframe(0.15f, 1.5f),
                         new Keyframe(0.45f, 0.5f),
                         new Keyframe(1f, 0.35f)
                     );
@@ -161,7 +130,6 @@ namespace Gallop
                     dynamic.m_Elasticity = 0.35f;
                     dynamic.m_Stiffness = 0.7f;
                     dynamic.m_Inert = 0.0f;
-                    dynamic.m_Radius = 0.03f;
 
                     dynamic.m_Gravity = Vector3.zero;
                     dynamic.m_Force = new Vector3(0f, -0.0005f, 0f);
@@ -181,10 +149,6 @@ namespace Gallop
                         new Keyframe(1f, 0.65f)
                     );
                     dynamic.m_InertDistrib = null;
-                    dynamic.m_RadiusDistrib = new AnimationCurve(
-                        new Keyframe(0f, 0.8f),
-                        new Keyframe(1f, 1.2f)
-                    );
                 }
                 else if (isHairSpring)
                 {
@@ -192,7 +156,6 @@ namespace Gallop
                     dynamic.m_Elasticity = Mathf.Clamp01(50f / spring._dragForce);
                     dynamic.m_Stiffness = Mathf.Clamp01(100f / spring._stiffnessForce);
                     dynamic.m_Inert = 1f - spring.MoveSpringApplyRate;
-                    dynamic.m_Radius = spring._collisionRadius * 0.9f;
 
                     dynamic.m_Gravity = Vector3.zero;
                     dynamic.m_Force = Vector3.zero;
@@ -204,7 +167,6 @@ namespace Gallop
                     dynamic.m_Elasticity = Mathf.Clamp01(50f / spring._dragForce);
                     dynamic.m_Stiffness = Mathf.Clamp01(100f / spring._stiffnessForce);
                     dynamic.m_Inert = 1f - spring.MoveSpringApplyRate;
-                    dynamic.m_Radius = spring._collisionRadius * 0.8f;
 
                     dynamic.m_Gravity = Vector3.zero;
                     dynamic.m_Force = Vector3.zero;
@@ -213,52 +175,38 @@ namespace Gallop
                 dynamic.SetupParticles();
                 DynamicBones.Add(dynamic);
 
-                foreach (string collisionName in spring._collisionNameList)
+                // CySpring describes the segment starting at the named bone. DynamicBone moves
+                // its child particle and uses that displacement to rotate the named bone.
+                for (int i = 1; i < dynamic.Particles.Count; i++)
                 {
-                    if (colliders.TryGetValue(collisionName, out Transform tmp))
+                    var tip = dynamic.Particles[i];
+                    var segment = dynamic.Particles[tip.m_ParentIndex].m_Transform;
+                    var child = spring._childElements?.Find(c => c._boneName == segment.name);
+                    // Some hairstyles use an inner guide sphere on a zero-angle root.
+                    // Its tip is kinematic; projecting it inside the sphere folds the fringe into the face.
+                    tip.m_PinToAnimatedRoot = isHairSpring && tip.m_ParentIndex == 0 && spring._isLimit &&
+                        spring._limitAngleMin == Vector3.zero && spring._limitAngleMax == Vector3.zero;
+                    tip.m_Radius = Mathf.Max(0f, child != null ? child._collisionRadius : spring._collisionRadius);
+                    if (child != null)
                     {
-                        var collider = tmp.GetComponent<DynamicBoneColliderBase>();
-                        if (collider != null)
+                        // Keep each appendage's tuned root response, then use the asset's
+                        // relative drag and restoring force along the strand.
+                        if (isHairObject || isTailObject)
                         {
-                            dynamic.Particles[0].m_Colliders.Add(collider);
+                            if (spring._dragForce > 0)
+                                tip.m_Damping = Mathf.Clamp01(tip.m_Damping * child._dragForce / spring._dragForce);
+                            if (spring._stiffnessForce > 0)
+                                tip.m_Elasticity = Mathf.Clamp01(tip.m_Elasticity * child._stiffnessForce / spring._stiffnessForce);
                         }
+                        tip.m_LimitAngel_Min = child._limitAngleMin;
+                        tip.m_LimitAngel_Max = child._limitAngleMax;
                     }
-                }
-
-                foreach (var child in spring._childElements)
-                {
-                    var tempParticle = dynamic.Particles.Find(
-                        p => p.m_Transform != null && p.m_Transform.gameObject.name == child._boneName
-                    );
-                    if (tempParticle == null) continue;
-
-                    if (isTailObject)
+                    var names = child != null ? child._collisionNameList : spring._collisionNameList;
+                    if (names == null) continue;
+                    foreach (var name in names)
                     {
-                    }
-                    else if (isEarSpring)
-                    {
-                    }
-                    else if (isHairSpring)
-                    {
-                    }
-                    else
-                    {
-                        // Body
-                    }
-
-                    tempParticle.m_LimitAngel_Min = child._limitAngleMin;
-                    tempParticle.m_LimitAngel_Max = child._limitAngleMax;
-
-                    foreach (string collisionName in child._collisionNameList)
-                    {
-                        if (colliders.TryGetValue(collisionName, out Transform tmp))
-                        {
-                            var collider = tmp.GetComponent<DynamicBoneColliderBase>();
-                            if (collider != null)
-                            {
-                                tempParticle.m_Colliders.Add(collider);
-                            }
-                        }
+                        if (colliders.TryGetValue(name, out var t) && t.TryGetComponent(out DynamicBoneColliderBase shape))
+                            tip.m_Colliders.Add(shape);
                     }
                 }
             }

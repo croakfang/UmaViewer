@@ -1,4 +1,4 @@
-using System;
+ï»¿using System;
 using System.Collections.Generic;
 using UnityEngine;
 using static Gallop.Live.Cutt.LiveTimelineDefine;
@@ -634,7 +634,7 @@ namespace Gallop.Live.Cutt
         public float Timescale;
     }
 
-//ÕıÔÚ´¦ÀíÕâÀï
+//æ­£åœ¨å¤„ç†è¿™é‡Œ
 [System.Serializable]
     public class LiveTimelineKeyCameraPositionData : LiveTimelineKeyWithInterpolate
     {
@@ -915,7 +915,7 @@ namespace Gallop.Live.Cutt
         [SerializeField] public List<LiveTimelineMultiCameraPositionData> multiCameraPosKeys;
         [SerializeField] public List<LiveTimelineMultiCameraLookAtData> multiCameraLookAtKeys;
 
-        //[SerializeField]ÓÃÓÚ¸ÃÀàÔÚ±ğµÄ½Å±¾Àï¶¨ÒåµÄÊ±ºò
+        //[SerializeField]ç”¨äºè¯¥ç±»åœ¨åˆ«çš„è„šæœ¬é‡Œå®šä¹‰çš„æ—¶å€™
         [SerializeField] public LiveTimelineKeyCameraLookAtDataList cameraLookAtKeys;
         [SerializeField] public LiveTimelineKeyCameraFovDataList cameraFovKeys;
         [SerializeField] public LiveTimelineKeyCameraRollDataList cameraRollKeys;
@@ -938,7 +938,7 @@ namespace Gallop.Live.Cutt
         [SerializeField] public List<LiveTimelineObjectData> objectList;
 
         /*
-		//ÖÕÓÚ¿ÉÒÔµ÷ÓÃAB°üÁË£¬ËäÈ»ºóÃæ·¢ÏÖÃ»Ê²Ã´ÓÃ...Ëµ²»¶¨Ê²Ã´Ê±ºòÄÜÓÃµ½
+		//ç»ˆäºå¯ä»¥è°ƒç”¨ABåŒ…äº†ï¼Œè™½ç„¶åé¢å‘ç°æ²¡ä»€ä¹ˆç”¨...è¯´ä¸å®šä»€ä¹ˆæ—¶å€™èƒ½ç”¨åˆ°
 		private void Start()
 		{
 			LoadCharaMotion();

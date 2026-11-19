@@ -30,7 +30,7 @@ public class SerializableBone
                 tags.Add(BoneTags.Right);
             }
 
-            if(t.GetComponentInParent<DynamicBone>() != null)
+            if (t.GetComponentInParent<DynamicBone>() != null)
             {
                 tags.Add(BoneTags.Dynamic);
             }

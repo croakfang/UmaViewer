@@ -1,4 +1,4 @@
-using Gallop.Live.Cutt;
+Ôªøusing Gallop.Live.Cutt;
 using System;
 using System.Collections.Generic;
 using System.IO;
@@ -152,7 +152,7 @@ namespace Gallop.Live
 
             sliderControl = UI.ProgressBar.GetComponent<SliderControl>();
             LiveViewerUI.Instance.RecordingUI.SetActive(IsRecordVMD);
-            LiveViewerUI.Instance.RecordingText.text = $"°Ò Recording...\r\n VMD will be saved in {Path.GetFullPath(Application.dataPath + UnityHumanoidVMDRecorder.FileSavePath)}";
+            LiveViewerUI.Instance.RecordingText.text = $"‚óè Recording...\r\n VMD will be saved in {Path.GetFullPath(Application.dataPath + UnityHumanoidVMDRecorder.FileSavePath)}";
         }
 
         public void InitializeTimeline(List<LiveCharacterSelect> characters, int mode)

@@ -44,6 +44,11 @@ public class Config
     public string AntiAliasingTip = "Display, screenshot antialiasing level. 0 - no AA, 1 - 2x MSAA, 2 - 4x MSAA, 3 - 8x MSAA";
     public int AntiAliasing = 2;
 
+    public string UseDynamicSkirtContactsTip = "enable extra limb contacts and skirt lift. Turn off for outfits whose panels stretch too far.";
+    public bool UseDynamicSkirtContacts = true;
+    public string UseSkirtSurfacePushTip = "let limbs push the skirt surface and support skirt panels around a held knee.";
+    public bool UseSkirtSurfacePush = true;
+
     public bool RegionDetectionPassed = false;
 
     public string VmdMorphConvertSettingTip = "The mapping of MMD mprphs to UMA mprphs during VMD recording, multiple UMA expression weights will be combined (not exceeding 1)";
